@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.vercel/
+.openai/
+.env*
+!.env.example
+package-lock.json

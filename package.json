@@ -1,0 +1,8 @@
+{
+  "name": "new-bedford-ship-supply",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "build": "node scripts/build.mjs", "dev": "node scripts/dev.mjs", "test": "node --test tests/*.test.mjs", "sync:catalog": "node scripts/sync-catalog.mjs" },
+  "engines": { "node": ">=22" }
+}
