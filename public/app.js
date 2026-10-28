@@ -1,7 +1,8 @@
 import {safeCart,checkoutURL,money,escapeHTML as esc} from './shop-utils.js';
 const $=(s,root=document)=>root.querySelector(s), $$=(s,root=document)=>[...root.querySelectorAll(s)];
-let catalog=[],cart=[],live=false,toastTimer;
+let catalog=[],cart=[],live=false,toastTimer,supplyTrip=[];
 try{cart=safeCart(JSON.parse(localStorage.getItem('nbss-bag')||'[]'));}catch{}
+try{const savedTrip=JSON.parse(localStorage.getItem('nbss-supply-trip')||'[]');if(Array.isArray(savedTrip))supplyTrip=savedTrip.filter(x=>x&&typeof x==='object').slice(0,100).map((x,i)=>({id:String(x.id||`restored-${i}`),item:String(x.item||'').slice(0,200),qty:String(x.qty||'').slice(0,100)}));}catch{}
 const dialog=$('.cart-dialog');
 function toast(message){$('#toast').textContent=message;$('#toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),3500);}
 function persist(){try{localStorage.setItem('nbss-bag',JSON.stringify(cart));}catch{toast('Your bag is available for this visit. Browser storage is unavailable.');}updateCounts();}
@@ -9,7 +10,7 @@ function updateCounts(){const count=cart.reduce((s,x)=>s+x.quantity,0);$$('.cart
 updateCounts();
 const menu=$('.mobile-toggle');
 menu.addEventListener('click',()=>{const open=menu.getAttribute('aria-expanded')!=='true';menu.setAttribute('aria-expanded',String(open));menu.setAttribute('aria-label',open?'Close menu':'Open menu');$('#mobile-menu').hidden=!open;});
-document.addEventListener('keydown',event=>{if(event.key==='Escape'&&menu.getAttribute('aria-expanded')==='true'){menu.click();menu.focus();}});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&menu.getAttribute('aria-expanded')==='true'){menu.click();menu.focus();}if(event.key==='Escape'&&$('#trip-ticket')?.classList.contains('is-open'))setTripTicketOpen(false,true);});
 $$('.cart-trigger').forEach(b=>b.addEventListener('click',async()=>{await catalogReady;renderCart();dialog.showModal();}));
 $('.close-cart').addEventListener('click',()=>dialog.close());
 dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right)dialog.close();}});
@@ -109,28 +110,69 @@ if($('#product-grid')){
  filters.forEach(b=>b.addEventListener('click',()=>{active=b.dataset.filter;filter();}));input.addEventListener('input',filter);sort.addEventListener('change',filter);$('#shop-search').addEventListener('submit',e=>{e.preventDefault();filter();});$('#reset-filters').addEventListener('click',()=>{active='All';input.value='';sort.value='featured';filter();input.focus();});filter();
  if(params.has('search'))input.focus();
 }
-function addManifestLine(item=''){
- const lines=$('#manifest-lines');if(!lines)return;
- const row=document.createElement('div');row.className='manifest-line';
- row.innerHTML=`<input name="item" placeholder="Item or department" aria-label="Supply item" value="${esc(item)}"><input name="qty" placeholder="Qty / size" aria-label="Quantity or size"><button type="button" class="remove-line" aria-label="Remove supply line">×</button>`;
- lines.append(row);row.querySelector('.remove-line').addEventListener('click',()=>{if($$('.manifest-line',lines).length>1)row.remove();else{$('input[name="item"]',row).value='';$('input[name="qty"]',row).value='';}});
- if(item){row.scrollIntoView({behavior:'smooth',block:'center'});$('input[name="qty"]',row).focus();}
+function tripCountLabel(count){return `${count} item${count===1?'':'s'}`;}
+function updateTripPresentation(){
+ const count=supplyTrip.filter(line=>line.item.trim()).length;
+ ['#trip-count','#trip-count-mobile','#request-trip-count'].forEach(selector=>{const node=$(selector);if(node)node.textContent=tripCountLabel(count);});
+ const empty=$('#trip-empty');if(empty)empty.hidden=count>0;
+ const summary=$('#request-manifest-summary');if(summary)summary.innerHTML=count?supplyTrip.filter(line=>line.item.trim()).map((line,index)=>`<div class="request-trip-line"><span>${String(index+1).padStart(2,'0')}</span><strong>${esc(line.item)}</strong><small>${esc(line.qty||'Qty / size not specified')}</small></div>`).join(''):'<p class="trip-summary-empty">No supplies added yet. Add items from the catalog above, or describe your request below.</p>';
+ const clear=$('#clear-trip-list');if(clear)clear.disabled=count===0;
 }
-if($('#manifest-lines')){
- $('.remove-line',$('#manifest-lines')).addEventListener('click',e=>{const row=e.currentTarget.closest('.manifest-line');$('input[name="item"]',row).value='';$('input[name="qty"]',row).value='';});
- $('#add-custom-item').addEventListener('click',()=>addManifestLine());
+function saveTrip(){try{localStorage.setItem('nbss-supply-trip',JSON.stringify(supplyTrip));}catch{toast('Your list is available for this visit. Browser storage is unavailable.');}updateTripPresentation();}
+function renderTrip(){
+ const lines=$('#trip-lines');if(!lines)return;
+ lines.innerHTML=supplyTrip.map(line=>`<div class="trip-line"><label><span>SUPPLY ITEM</span><input type="text" data-trip-field="item" data-trip-id="${esc(line.id)}" value="${esc(line.item)}" placeholder="Item or department" aria-label="Supply item"></label><label><span>QTY / SIZE</span><input type="text" data-trip-field="qty" data-trip-id="${esc(line.id)}" value="${esc(line.qty)}" placeholder="As needed" aria-label="Quantity or size for ${esc(line.item||'supply item')}"></label><button type="button" data-trip-remove="${esc(line.id)}" aria-label="Remove ${esc(line.item||'supply item')}">×</button></div>`).join('');
+ updateTripPresentation();
+}
+function addTripLine(item=''){
+ const id=`trip-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
+ supplyTrip.push({id,item,qty:''});saveTrip();renderTrip();
+ if(!item)$('#trip-lines')?.lastElementChild?.querySelector('[data-trip-field="item"]')?.focus();
+}
+function setTripTicketOpen(open,restoreFocus=false){
+ const ticket=$('#trip-ticket'),toggle=$('#trip-ticket-toggle');if(!ticket||!toggle)return;
+ ticket.classList.toggle('is-open',open);toggle.setAttribute('aria-expanded',String(open));document.body.classList.toggle('trip-ticket-open',open);
+ if(open)$('#trip-ticket-close')?.focus();else if(restoreFocus)toggle.focus();
+}
+if($('#trip-ticket')){
+ renderTrip();
+ $('#trip-ticket-toggle').addEventListener('click',()=>setTripTicketOpen(true));
+ $('#trip-ticket-close').addEventListener('click',()=>setTripTicketOpen(false,true));
+ $('#trip-ticket-backdrop').addEventListener('click',()=>setTripTicketOpen(false,true));
+ $('#add-custom-item').addEventListener('click',()=>addTripLine());
+ $('#clear-trip-list').addEventListener('click',()=>{supplyTrip=[];saveTrip();renderTrip();toast('Trip list cleared.');});
+ $('#trip-lines').addEventListener('input',event=>{
+  const input=event.target.closest('[data-trip-field]');if(!input)return;
+  const line=supplyTrip.find(x=>x.id===input.dataset.tripId);if(!line)return;
+  line[input.dataset.tripField]=input.value.slice(0,input.dataset.tripField==='item'?200:100);
+  saveTrip();
+ });
+ $('#trip-lines').addEventListener('click',event=>{
+  const button=event.target.closest('[data-trip-remove]');if(!button)return;
+  supplyTrip=supplyTrip.filter(line=>line.id!==button.dataset.tripRemove);saveTrip();renderTrip();
+ });
  $$('[data-add-supply]').forEach(button=>button.addEventListener('click',()=>{
-  const blank=$('.manifest-line input[name="item"]:placeholder-shown');
-  if(blank){blank.value=button.dataset.addSupply;blank.closest('.manifest-line').querySelector('input[name="qty"]').focus();}
-  else addManifestLine(button.dataset.addSupply);
-  $('#supply-request').scrollIntoView({behavior:'smooth'});toast(`${button.dataset.addSupply} added to the trip list.`);
+  addTripLine(button.dataset.addSupply);toast(`${button.dataset.addSupply} added to your trip list.`);
  }));
+ $('#review-trip-list').addEventListener('click',()=>{
+  setTripTicketOpen(false);document.body.classList.add('trip-review-mode');$('#supply-request').scrollIntoView({behavior:'smooth',block:'start'});
+  window.setTimeout(()=>$('#supply-request input[name="name"]')?.focus({preventScroll:true}),450);
+ });
+ $('#edit-trip-list').addEventListener('click',()=>{document.body.classList.remove('trip-review-mode');$('#supply-catalog').scrollIntoView({behavior:'smooth',block:'start'});});
+ const requestSection=$('#supply-request');
+ if(requestSection&&'IntersectionObserver'in window)new IntersectionObserver(entries=>document.body.classList.toggle('trip-review-visible',entries[0].isIntersecting),{threshold:.12}).observe(requestSection);
+ const search=$('#supply-search'),cards=$$('.supply-card');
+ search.addEventListener('input',()=>{
+  const query=search.value.trim().toLowerCase();let visible=0;
+  cards.forEach(card=>{const match=card.dataset.supplySearch.includes(query);card.hidden=!match;if(match)visible++;});
+  $('#supply-no-results').hidden=visible>0;
+ });
 }
 $$('[data-inquiry]').forEach(form=>form.addEventListener('submit',e=>{
  e.preventDefault();const data=new FormData(form),supply=form.dataset.inquiry==='supply';
  const subject=supply?`Marine supply inquiry${data.get('company')?' — '+data.get('company'):''}`:`NBSS — ${data.get('topic')||'General question'}`;
- const lines=supply?$$('.manifest-line',form).map(row=>({item:$('input[name="item"]',row).value.trim(),qty:$('input[name="qty"]',row).value.trim()})).filter(x=>x.item):[];
- if(supply&&!lines.length&&!data.get('message').trim()){toast('Add at least one supply item or note.');$('input[name="item"]',form).focus();return;}
+ const lines=supply?supplyTrip.map(line=>({item:line.item.trim(),qty:line.qty.trim()})).filter(line=>line.item):[];
+ if(supply&&!lines.length&&!data.get('message').trim()){toast('Add at least one supply item or note.');$('textarea[name="message"]',form).focus();return;}
  const manifest=lines.length?`\nTRIP MANIFEST\n${lines.map((line,i)=>`${i+1}. ${line.item}${line.qty?' — '+line.qty:''}`).join('\n')}\n`:'';
  const body=`Name: ${data.get('name')}\nEmail: ${data.get('email')}\n${supply?'Vessel / company':'Phone'}: ${data.get('company')||'Not provided'}\n${supply?'Needed by: '+(data.get('date')||'Not specified')+'\nPreferred handoff: '+(data.get('handoff')||'Counter pickup')+'\n':''}${manifest}\n${supply?'Notes / specifications':'Message'}:\n${data.get('message')||'None provided'}`;
  const url=`mailto:help@nbshipsupply.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;

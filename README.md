@@ -9,7 +9,8 @@ A research-led storefront rebuild for New Bedford's working chandlery, using the
 - Persistent shopping bag, quantity controls, removal, cross-tab synchronization and Shopify cart-permalink checkout.
 - Same-origin `/api/catalog` Vercel function refreshes public Shopify prices and variant availability. A dated catalog snapshot allows browsing during upstream outages. Shopify is authoritative for inventory, tax, shipping and payment.
 - A commercial-supply desk covers scallop gear, rope and wire, deck and safety gear, tools, provisions, pickup and dock-delivery inquiries.
-- Visitors can build a vessel trip manifest with line items, quantities, timing and handoff preference. The request prepares an email draft for `help@nbshipsupply.com`; the visitor reviews and sends it from their own email app.
+- The working catalog includes supply search and a desktop sticky trip ticket; mobile visitors use a bottom bar and slide-up trip-list drawer. Lists support editable quantities, custom lines, removal, a review step and local draft persistence.
+- The request prepares an email draft for `help@nbshipsupply.com`; the visitor reviews and sends it from their own email app.
 - Responsive layouts, keyboard controls, accessible dialogs, reduced-motion support, local fonts, static HTML routes and descriptive metadata.
 
 ## Run
@@ -61,4 +62,4 @@ The snapshot was imported on October 22, 2026. Product detail and bag prices/ava
 - Automated checks cover catalog/variant validity, multi-item checkout mapping, malformed local cart data, and every generated internal link/local asset.
 - Live Shopify catalog read verified: 17 products.
 - Managed-browser visual QA completed for the home page, commercial-supply desk and retail catalog.
-- The trip-manifest quick-add interaction was verified in the browser.
+- The supply search, no-scroll quick-add, quantity editing, review summary and draft persistence across refresh were verified in the browser.
