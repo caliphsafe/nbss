@@ -111,3 +111,61 @@
  .request-trip-line{grid-template-columns:24px minmax(0,1fr);row-gap:3px}
  .request-trip-line>small{grid-column:2}
 }
+
+/* Mobile audit: keep display type, navigation and controls comfortable on narrow screens. */
+@media(max-width:600px){
+ h1,h2{max-width:100%;line-height:.96;overflow-wrap:break-word}
+ .header-inner{gap:12px}
+ .brand{min-width:0}
+ .brand span{min-width:0}
+ .brand strong{font-size:clamp(19px,5.5vw,22px);white-space:nowrap}
+ .header-actions .icon-button{min-width:44px;height:44px}
+ .hero-copy h1{font-size:clamp(56px,18vw,96px)}
+ .service-heading h2{font-size:clamp(46px,14vw,58px)}
+ .dock-delivery h2{font-size:clamp(48px,14vw,61px)}
+ .apparel-heading h2{font-size:clamp(42px,12.5vw,50px)}
+ .note-copy h2{font-size:clamp(50px,15vw,65px)}
+ .shop-masthead h1{font-size:clamp(48px,14.5vw,65px)}
+ .supply-hero-copy h1{font-size:clamp(56px,17.5vw,92px)}
+ .catalog-heading h2{font-size:clamp(44px,13.5vw,53px)}
+ .brand-suppliers h2{font-size:clamp(38px,10.75vw,43px)}
+ .request-intro h2{font-size:clamp(48px,15.5vw,61px)}
+ .story-title h1{font-size:clamp(58px,17.5vw,92px)}
+ .origin-grid h2{font-size:clamp(42px,13vw,52px)}
+ .story-equipment h2{font-size:clamp(46px,14vw,56px)}
+ .generation-copy h2{font-size:clamp(46px,14vw,55px)}
+ .finestkind-note h2{font-size:clamp(40px,11.75vw,47px)}
+ .contact-hero h1{font-size:clamp(50px,15vw,88px)}
+ .contact-form-section h2{font-size:clamp(46px,14vw,58px)}
+ .faq-hero h1{font-size:clamp(50px,15vw,64px)}
+ .not-found h1{font-size:clamp(48px,15vw,65px)}
+ .product-buy h1{font-size:clamp(40px,13vw,50px)}
+ .section-head h2{font-size:clamp(40px,12vw,47px)}
+ .supply-tags{gap:8px}
+ .supply-tags button{min-height:40px;padding:9px 11px;font-size:10px}
+ .trip-ticket-close{width:44px;height:44px}
+ .trip-line{grid-template-columns:minmax(0,1fr) 96px 44px;gap:6px}
+ .trip-line input{height:44px;font-size:14px}
+ .trip-line>button{min-width:44px;min-height:44px}
+ .trip-clear,.trip-add-custom,#edit-trip-list{min-height:44px}
+ .footer-grid>*{min-width:0}
+ .footer-grid a,.detail-ticket strong{overflow-wrap:anywhere}
+ .footer-brand strong{font-size:clamp(23px,7vw,27px)}
+}
+@media(max-width:380px){
+ .header-inner{padding-inline:12px;gap:8px}
+ .brand{gap:5px}
+ .brand img{width:42px;height:42px}
+ .brand strong{font-size:19px}
+ .header-actions{gap:0}
+ .header-actions .icon-button{min-width:40px}
+ .trip-ticket-heading{padding:14px 15px}
+ .trip-ticket-content{padding:13px 15px max(16px,env(safe-area-inset-bottom))}
+ .trip-line{grid-template-columns:minmax(0,1fr) 82px 44px;gap:5px}
+ .trip-line label{font-size:7px}
+ .trip-line input{padding:6px}
+ .trip-ticket-footer{gap:8px}
+ .trip-review{padding:10px;font-size:8px}
+ .inquiry-form{padding:18px 13px}
+ .footer-grid{gap:24px 12px}
+}
