@@ -109,10 +109,30 @@ if($('#product-grid')){
  filters.forEach(b=>b.addEventListener('click',()=>{active=b.dataset.filter;filter();}));input.addEventListener('input',filter);sort.addEventListener('change',filter);$('#shop-search').addEventListener('submit',e=>{e.preventDefault();filter();});$('#reset-filters').addEventListener('click',()=>{active='All';input.value='';sort.value='featured';filter();input.focus();});filter();
  if(params.has('search'))input.focus();
 }
+function addManifestLine(item=''){
+ const lines=$('#manifest-lines');if(!lines)return;
+ const row=document.createElement('div');row.className='manifest-line';
+ row.innerHTML=`<input name="item" placeholder="Item or department" aria-label="Supply item" value="${esc(item)}"><input name="qty" placeholder="Qty / size" aria-label="Quantity or size"><button type="button" class="remove-line" aria-label="Remove supply line">×</button>`;
+ lines.append(row);row.querySelector('.remove-line').addEventListener('click',()=>{if($$('.manifest-line',lines).length>1)row.remove();else{$('input[name="item"]',row).value='';$('input[name="qty"]',row).value='';}});
+ if(item){row.scrollIntoView({behavior:'smooth',block:'center'});$('input[name="qty"]',row).focus();}
+}
+if($('#manifest-lines')){
+ $('.remove-line',$('#manifest-lines')).addEventListener('click',e=>{const row=e.currentTarget.closest('.manifest-line');$('input[name="item"]',row).value='';$('input[name="qty"]',row).value='';});
+ $('#add-custom-item').addEventListener('click',()=>addManifestLine());
+ $$('[data-add-supply]').forEach(button=>button.addEventListener('click',()=>{
+  const blank=$('.manifest-line input[name="item"]:placeholder-shown');
+  if(blank){blank.value=button.dataset.addSupply;blank.closest('.manifest-line').querySelector('input[name="qty"]').focus();}
+  else addManifestLine(button.dataset.addSupply);
+  $('#supply-request').scrollIntoView({behavior:'smooth'});toast(`${button.dataset.addSupply} added to the trip list.`);
+ }));
+}
 $$('[data-inquiry]').forEach(form=>form.addEventListener('submit',e=>{
  e.preventDefault();const data=new FormData(form),supply=form.dataset.inquiry==='supply';
  const subject=supply?`Marine supply inquiry${data.get('company')?' — '+data.get('company'):''}`:`NBSS — ${data.get('topic')||'General question'}`;
- const body=`Name: ${data.get('name')}\nEmail: ${data.get('email')}\n${supply?'Vessel / company':'Phone'}: ${data.get('company')||'Not provided'}\n${supply?'Needed by: '+(data.get('date')||'Not specified')+'\n':''}\n${data.get('message')}`;
+ const lines=supply?$$('.manifest-line',form).map(row=>({item:$('input[name="item"]',row).value.trim(),qty:$('input[name="qty"]',row).value.trim()})).filter(x=>x.item):[];
+ if(supply&&!lines.length&&!data.get('message').trim()){toast('Add at least one supply item or note.');$('input[name="item"]',form).focus();return;}
+ const manifest=lines.length?`\nTRIP MANIFEST\n${lines.map((line,i)=>`${i+1}. ${line.item}${line.qty?' — '+line.qty:''}`).join('\n')}\n`:'';
+ const body=`Name: ${data.get('name')}\nEmail: ${data.get('email')}\n${supply?'Vessel / company':'Phone'}: ${data.get('company')||'Not provided'}\n${supply?'Needed by: '+(data.get('date')||'Not specified')+'\nPreferred handoff: '+(data.get('handoff')||'Counter pickup')+'\n':''}${manifest}\n${supply?'Notes / specifications':'Message'}:\n${data.get('message')||'None provided'}`;
  const url=`mailto:help@nbshipsupply.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
  const result=$('.inquiry-result',form);result.hidden=false;result.innerHTML=`<p>Your draft is ready. Send it from your email app to complete your inquiry.</p><a class="text-link" href="${esc(url)}">Open email draft →</a><details style="margin-top:12px"><summary>Email app didn’t open?</summary><p>Copy the draft below and email it to help@nbshipsupply.com.</p><textarea aria-label="Email draft" readonly rows="6">${esc(subject+'\n\n'+body)}</textarea></details>`;
  window.location.href=url;
