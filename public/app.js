@@ -4,7 +4,8 @@ let catalog=[],cart=[],live=false,toastTimer,supplyTrip=[];
 try{cart=safeCart(JSON.parse(localStorage.getItem('nbss-bag')||'[]'));}catch{}
 try{const savedTrip=JSON.parse(localStorage.getItem('nbss-supply-trip')||'[]');if(Array.isArray(savedTrip))supplyTrip=savedTrip.filter(x=>x&&typeof x==='object').slice(0,100).map((x,i)=>({id:String(x.id||`restored-${i}`),item:String(x.item||'').slice(0,200),qty:String(x.qty||'').slice(0,100)}));}catch{}
 const dialog=$('.cart-dialog');
-function toast(message){$('#toast').textContent=message;$('#toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),3500);}
+function dismissToast(){clearTimeout(toastTimer);$('#toast').classList.remove('visible');}
+function toast(message){if(document.body.classList.contains('trip-ticket-open')){dismissToast();return;}$('#toast').textContent=message;$('#toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('visible'),3500);}
 function persist(){try{localStorage.setItem('nbss-bag',JSON.stringify(cart));}catch{toast('Your bag is available for this visit. Browser storage is unavailable.');}updateCounts();}
 function updateCounts(){const count=cart.reduce((s,x)=>s+x.quantity,0);$$('.cart-count').forEach(x=>x.textContent=count);$('.cart-trigger').setAttribute('aria-label',`Open shopping bag, ${count} items`);}
 updateCounts();
@@ -132,7 +133,7 @@ function addTripLine(item=''){
 function setTripTicketOpen(open,restoreFocus=false){
  const ticket=$('#trip-ticket'),toggle=$('#trip-ticket-toggle');if(!ticket||!toggle)return;
  ticket.classList.toggle('is-open',open);toggle.setAttribute('aria-expanded',String(open));document.body.classList.toggle('trip-ticket-open',open);
- if(open)$('#trip-ticket-close')?.focus();else if(restoreFocus)toggle.focus();
+ if(open){dismissToast();$('#trip-ticket-close')?.focus();}else if(restoreFocus)toggle.focus();
 }
 if($('#trip-ticket')){
  renderTrip();
