@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="theme-color" content="#11130f">
+  <title>Private Supply Desk | New Bedford Ship Supply</title>
+  <link rel="icon" href="/images/nbss-logo.png">
+  <link rel="stylesheet" href="/fonts/fonts.css">
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/admin.js"></script>
+</head>
+<body class="admin-body">
+  <header class="admin-topbar">
+    <a class="admin-brand" href="/" aria-label="New Bedford Ship Supply website">
+      <img src="/images/nbss-logo.png" width="48" height="48" alt="">
+      <span><small>NEW BEDFORD</small><strong>SHIP SUPPLY CO.</strong></span>
+    </a>
+    <div class="admin-private-label"><span aria-hidden="true"></span> PRIVATE SUPPLY DESK</div>
+  </header>
+  <main class="admin-main" id="main">
+    <div class="admin-heading-row">
+      <div><p class="kicker">VESSEL ORDERS / NB-108</p><h1>THE ORDER <em>DESK.</em></h1><p>Review requests, confirm the details and keep every vessel moving.</p></div>
+      <a class="text-link" href="/marine-supply">RETURN TO THE CHANDLERY →</a>
+    </div>
+    <div class="admin-banner" id="admin-banner" role="status" aria-live="polite" hidden></div>
+
+    <section class="admin-login-panel" id="admin-login" aria-labelledby="admin-login-title" hidden>
+      <div class="admin-login-mark">NBSS<br>108</div>
+      <div><p class="kicker">STAFF ACCESS</p><h2 id="admin-login-title">SIGN IN TO THE<br>SUPPLY DESK.</h2><p>Use an approved NBSS Google account. Customer requests and staff notes stay within this private workspace.</p><a class="button" id="admin-sign-in" href="/api/admin-login">Sign in with Google <span aria-hidden="true">→</span></a></div>
+    </section>
+
+    <section id="admin-dashboard" hidden aria-label="Supply order management">
+      <div class="admin-toolbar">
+        <div class="admin-welcome"><span class="admin-live-dot" aria-hidden="true"></span><span>Signed in as <strong id="admin-user"></strong></span></div>
+        <div class="admin-toolbar-actions"><button type="button" class="admin-utility-button" id="admin-refresh">Refresh list</button><button type="button" class="admin-utility-button" id="admin-export">Download CSV</button><button type="button" class="admin-utility-button" id="admin-sign-out">Sign out</button></div>
+      </div>
+      <div class="admin-stats" id="admin-stats" aria-label="Request counts"></div>
+      <div class="admin-list-header"><div><p class="kicker">COUNTER MANIFEST</p><h2>SUPPLY REQUESTS</h2></div><div class="admin-updated">Updated <time id="admin-updated-at">—</time><span> · Refreshes every minute</span></div></div>
+      <div class="admin-filters">
+        <label class="admin-search">SEARCH<input type="search" id="admin-search" placeholder="Request, vessel, person or item" autocomplete="off"></label>
+        <label class="admin-status-filter">STATUS<select id="admin-status-filter"><option value="all">All requests</option><option>New</option><option>Need more information</option><option>Quoted</option><option>Ready for pickup</option><option>Fulfilled</option><option>Closed</option></select></label>
+        <span class="admin-result-count" id="admin-result-count">0 requests</span>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-order-table"><thead><tr><th scope="col">REQUEST</th><th scope="col">VESSEL / CUSTOMER</th><th scope="col">SUPPLIES</th><th scope="col">NEEDED BY</th><th scope="col">STATUS</th><th scope="col"><span class="visually-hidden">View request</span></th></tr></thead><tbody id="admin-order-list"></tbody></table>
+        <div class="admin-empty-state" id="admin-empty" hidden><span class="admin-empty-stamp">NO TICKETS</span><h3>THE DESK IS CLEAR.</h3><p>New supply requests will appear here when customers submit the Chandlery list.</p></div>
+      </div>
+    </section>
+  </main>
+
+  <dialog class="admin-order-dialog" id="admin-order-dialog" aria-labelledby="detail-title">
+    <div class="admin-dialog-head"><div><p class="kicker">SUPPLY REQUEST / DETAIL</p><h2 id="detail-title">REQUEST</h2></div><button type="button" class="admin-close" id="admin-detail-close" aria-label="Close request details">×</button></div>
+    <div class="admin-dialog-content">
+      <div class="admin-detail-customer" id="detail-customer"></div>
+      <div class="admin-detail-grid" id="detail-meta"></div>
+      <section class="admin-detail-section"><h3>SUPPLY LIST</h3><ul id="detail-items"></ul></section>
+      <section class="admin-detail-section"><h3>CUSTOMER NOTES</h3><p id="detail-message" class="admin-detail-copy"></p></section>
+      <form id="admin-update-form">
+        <label class="admin-edit-field">REQUEST STATUS<select id="detail-status"><option>New</option><option>Need more information</option><option>Quoted</option><option>Ready for pickup</option><option>Fulfilled</option><option>Closed</option></select></label>
+        <label class="admin-edit-field">PRIVATE STAFF NOTES<textarea id="detail-staff-notes" rows="4" maxlength="4000" placeholder="Record a call, quote, stock check or pickup arrangement…"></textarea><small>Only signed-in NBSS staff can see these notes.</small></label>
+        <div class="admin-dialog-footer"><p id="detail-updated" class="small"></p><button type="submit" class="button" id="detail-save">Save updates <span aria-hidden="true">→</span></button></div>
+      </form>
+    </div>
+  </dialog>
+</body>
+</html>

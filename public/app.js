@@ -178,13 +178,38 @@ if($('#trip-ticket')){
   $('#supply-no-results').hidden=visible>0;
  });
 }
-$$('[data-inquiry]').forEach(form=>form.addEventListener('submit',e=>{
+function writeRequestMessage(result,{title,detail,warning=''}={}){
+ result.replaceChildren();result.hidden=false;
+ const heading=document.createElement('strong');heading.textContent=title;result.append(heading);
+ const copy=document.createElement('p');copy.textContent=detail;result.append(copy);
+ if(warning){const note=document.createElement('p');note.className='request-warning';note.textContent=warning;result.append(note);}
+}
+$$('[data-inquiry]').forEach(form=>form.addEventListener('submit',async e=>{
  e.preventDefault();const data=new FormData(form),supply=form.dataset.inquiry==='supply';
- const subject=supply?`Marine supply inquiry${data.get('company')?' — '+data.get('company'):''}`:`NBSS — ${data.get('topic')||'General question'}`;
- const lines=supply?supplyTrip.map(line=>({item:line.item.trim(),qty:line.qty.trim()})).filter(line=>line.item):[];
- if(supply&&!lines.length&&!data.get('message').trim()){toast('Add at least one supply item or note.');$('textarea[name="message"]',form).focus();return;}
- const manifest=lines.length?`\nTRIP MANIFEST\n${lines.map((line,i)=>`${i+1}. ${line.item}${line.qty?' — '+line.qty:''}`).join('\n')}\n`:'';
- const body=`Name: ${data.get('name')}\nEmail: ${data.get('email')}\n${supply?'Vessel / company':'Phone'}: ${data.get('company')||'Not provided'}\n${supply?'Needed by: '+(data.get('date')||'Not specified')+'\nPreferred handoff: '+(data.get('handoff')||'Counter pickup')+'\n':''}${manifest}\n${supply?'Notes / specifications':'Message'}:\n${data.get('message')||'None provided'}`;
+ if(supply){
+  const lines=supplyTrip.map(line=>({item:line.item.trim(),qty:line.qty.trim()})).filter(line=>line.item);
+  const result=$('.inquiry-result',form),button=$('button[type="submit"]',form),original=button.textContent;
+  if(!lines.length&&!String(data.get('message')||'').trim()){$('textarea[name="message"]',form).focus();toast('Add at least one supply item or a note for the counter.');return;}
+  const submissionKey=form.dataset.submissionKey||(form.dataset.submissionKey=globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`);
+  button.disabled=true;button.textContent='Sending request…';
+  result.hidden=true;
+  try{
+   const response=await fetch('/api/supply-orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    name:data.get('name'),email:data.get('email'),company:data.get('company'),neededBy:data.get('date'),handoff:data.get('handoff'),
+    message:data.get('message'),website:data.get('website'),items:lines,submissionKey
+   })});
+   const payload=await response.json().catch(()=>({}));
+   if(!response.ok||!payload.accepted)throw new Error(payload.error||'We could not save your request.');
+   form.dataset.submissionKey='';
+   const warning=!payload.staffAlertSent||!payload.customerConfirmationSent?'Your request is on file, but an automatic email could not be sent to the counter or to you. Save this reference number and call 508-994-2961 if the request is time-sensitive.':'';
+   writeRequestMessage(result,{title:`Request received · ${payload.orderNumber}`,detail:'The supply desk has your list. This is a request, not a confirmed order; NBSS will confirm availability, pricing and handoff with you.',warning});
+   if(!payload.duplicate){supplyTrip=[];saveTrip();renderTrip();}
+  }catch(error){writeRequestMessage(result,{title:'Request not submitted',detail:error.message||'Please try again.',warning:'If the issue continues or your request is time-sensitive, call the supply desk at 508-994-2961.'});}
+  finally{button.disabled=false;button.textContent=original;}
+  return;
+ }
+ const subject=`NBSS — ${data.get('topic')||'General question'}`;
+ const body=`Name: ${data.get('name')}\nEmail: ${data.get('email')}\nPhone: ${data.get('company')||'Not provided'}\nMessage:\n${data.get('message')||'None provided'}`;
  const url=`mailto:help@nbshipsupply.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
  const result=$('.inquiry-result',form);result.hidden=false;result.innerHTML=`<p>Your draft is ready. Send it from your email app to complete your inquiry.</p><a class="text-link" href="${esc(url)}">Open email draft →</a><details style="margin-top:12px"><summary>Email app didn’t open?</summary><p>Copy the draft below and email it to help@nbshipsupply.com.</p><textarea aria-label="Email draft" readonly rows="6">${esc(subject+'\n\n'+body)}</textarea></details>`;
  window.location.href=url;

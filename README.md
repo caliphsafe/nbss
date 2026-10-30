@@ -10,7 +10,7 @@ A research-led storefront rebuild for New Bedford's working chandlery, using the
 - Same-origin `/api/catalog` Vercel function refreshes public Shopify prices and variant availability. A dated catalog snapshot allows browsing during upstream outages. Shopify is authoritative for inventory, tax, shipping and payment.
 - A commercial-supply desk covers scallop gear, rope and wire, deck and safety gear, tools, provisions, pickup and dock-delivery inquiries.
 - The working catalog includes supply search and a desktop sticky trip ticket; mobile visitors use a bottom bar and slide-up trip-list drawer. Lists support editable quantities, custom lines, removal, a review step and local draft persistence.
-- The request prepares an email draft for `help@nbshipsupply.com`; the visitor reviews and sends it from their own email app.
+- Supply requests submit to a private Google Sheet through Vercel server functions. `/admin` is a staff-only Google sign-in order desk with search, status updates, private notes, CSV export and 60-second refresh. Optional Resend configuration sends customer confirmations and staff alerts.
 - Responsive layouts, keyboard controls, accessible dialogs, reduced-motion support, local fonts, static HTML routes and descriptive metadata.
 
 ## Run
@@ -29,7 +29,11 @@ npm run dev
 
 Import `caliphsafe/nbss`, using the repository root, framework preset **Other**, build command `npm run build`, output directory `dist`, and Node.js 22 or later. `vercel.json` includes the deployment configuration. No API keys are required for the existing public Shopify catalog and checkout handoff.
 
-The connected Vercel project deploys updates from the repository's `main` branch. This upload does not change the existing store or DNS.
+The connected Vercel project deploys updates from the repository's `main` branch. This upload does not change the existing store or DNS. The order intake requires Google Sheets, OAuth and email configuration before it can accept production requests.
+
+## Supply request backend setup
+
+Follow [the complete Google Sheets, Google Cloud, Resend and Vercel setup guide](docs/supply-orders-setup.md) before announcing the order desk. It lists the exact `Orders` header row and environment variables. Keep production credentials out of Git and do not point preview deployments at the live order sheet.
 
 ## Shopify and domain handoff
 
