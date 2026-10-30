@@ -40,20 +40,20 @@ If a Google Workspace policy blocks sharing with a service account, ask the Work
 5. Add this exact **Authorized redirect URI** (replace the origin with the live production site origin, with no trailing slash):
 
 ```text
-https://YOUR-PRODUCTION-ORIGIN/api/admin-auth-callback
+https://nbss-nine.vercel.app/api/admin-auth-callback
 ```
 
-Use the domain currently serving the NBSS rebuild. Do not change DNS or Shopify domains as part of this setup. If NBSS later changes its production domain, update both `APP_BASE_URL` in Vercel and the authorized redirect URI in Google Cloud.
+The earlier site screenshot shows `https://nbss-nine.vercel.app`; use this exact callback if that hostname is still the Production domain listed in Vercel → **Settings → Domains**. If the primary Production domain has changed, replace only the hostname in this callback with that current domain. Do not use a build-specific deployment URL or change DNS / Shopify domains for this setup. If NBSS later changes its production domain, update both `APP_BASE_URL` in Vercel and the authorized redirect URI in Google Cloud.
 6. Copy the OAuth client ID and client secret into Vercel in the next step. Do not put either secret in frontend JavaScript.
 
 ## 4. Configure Vercel environment variables
 
-1. Open the connected **NBSS Vercel project → Settings → Environment Variables**.
+1. Open the Vercel project connected to `caliphsafe/nbss` (project name `nbss`) → **Settings → Environment Variables**.
 2. Add the following values for **Production**. Do not use the live spreadsheet credentials in Preview unless you create a separate test spreadsheet and separate OAuth callback.
 
 | Variable | Value |
 | --- | --- |
-| `APP_BASE_URL` | The production site origin, such as `https://your-live-nbss-host`, with no trailing slash or path |
+| `APP_BASE_URL` | `https://nbss-nine.vercel.app` if it remains the primary Production domain, with no trailing slash or path |
 | `GOOGLE_SHEETS_SPREADSHEET_ID` | The spreadsheet ID copied in step 1 |
 | `GOOGLE_SERVICE_ACCOUNT_EMAIL` | The service account's `client_email` |
 | `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` | The complete `private_key`, including the `BEGIN PRIVATE KEY` and `END PRIVATE KEY` lines |
