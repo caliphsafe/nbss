@@ -190,6 +190,7 @@
 @media(max-width:420px){.admin-private-label{gap:6px;font-size:0}.admin-private-label>span{width:8px;height:8px}.admin-main{width:92%}.admin-heading-row h1{font-size:52px}.admin-login-panel{grid-template-columns:1fr}.admin-login-mark{width:82px}.admin-stats{gap:8px}.admin-stat-card>span{font-size:8px}.admin-filters{grid-template-columns:1fr}.admin-result-count{grid-column:auto}}
 
 /* Write-in chandlery order form */
+.counter-note{grid-template-columns:150px repeat(3,minmax(0,1fr))}
 .supply-order-section{align-items:start}
 .supply-order-section .request-intro{position:sticky;top:145px}
 .supply-order-section .request-intro>p{font:16px/1.65 var(--serif);color:var(--muted);margin:22px 0}
@@ -252,6 +253,9 @@
 .admin-checkbox-field span{display:grid;gap:4px}
 .admin-checkbox-field small{color:var(--muted);font-size:10px}
 @media(max-width:760px){
+ .counter-note{grid-template-columns:1fr}
+ .counter-note>span{display:none}
+ .counter-note>div{padding:12px 6%;border-right:0;border-bottom:1px solid var(--ink)}
  .supply-order-section .request-intro{position:static}
  .write-in-order{padding:14px 12px}
  .write-in-heading h3{font-size:23px}

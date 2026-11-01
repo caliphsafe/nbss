@@ -134,8 +134,9 @@ function renderOrderLines(){
   row.append(itemLabel,qtyLabel,remove);host.append(row);
  });
  const count=$('#order-line-count');if(count)count.textContent=`${orderLines.length} ${orderLines.length===1?'line':'lines'}`;
+ const add=$('#add-order-line');if(add)add.disabled=orderLines.length>=50;
 }
-function addOrderLine(focus=true){orderLines.push({id:orderLineId(),item:'',qty:''});saveOrderLines();renderOrderLines();if(focus)$('#order-lines input[data-order-field="item"]:last-of-type')?.focus();}
+function addOrderLine(focus=true){if(orderLines.length>=50)return;orderLines.push({id:orderLineId(),item:'',qty:''});saveOrderLines();renderOrderLines();if(focus)$('#order-lines')?.lastElementChild?.querySelector('[data-order-field="item"]')?.focus();}
 if($('#supply-order-form')){
  if(!orderLines.length)orderLines=[{id:orderLineId(),item:'',qty:''}];
  renderOrderLines();

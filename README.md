@@ -58,12 +58,10 @@ The snapshot was imported on October 22, 2026. Product detail and bag prices/ava
 - Barlow and Barlow Condensed fonts: Google Fonts (SIL Open Font License, bundled in `public/fonts`).
 - Public catalog snapshot: `data/catalog.json`.
 - Company history, address, phone number, chandlery departments, public counter access and dock-delivery language were researched against NBSS's published company pages and local reporting.
-- Marine supply categories are inquiry topics, not an invented online inventory. No commercial stock, pricing, opening hours or fulfillment promises were invented.
+- Inventory starts empty; the suggested starter names in the setup guide are not preloaded stock. NBSS staff enter verified on-hand and reorder quantities and confirm pricing per order.
 
 ## Verification
 
-- Production static build passes (24 pages).
-- Automated checks cover catalog/variant validity, multi-item checkout mapping, malformed local cart data, and every generated internal link/local asset.
-- Live Shopify catalog read verified: 17 products.
-- Managed-browser visual QA completed for the home page, commercial-supply desk and retail catalog.
-- The supply search, no-scroll quick-add, quantity editing, review summary and draft persistence across refresh were verified in the browser.
+- `npm run build` passes and generates 24 pages.
+- `npm test` passes 12 checks covering catalog and variant validity, order and inventory validation, spreadsheet row mapping, staff access, cross-origin mutation protection and generated internal links/assets.
+- The existing Shopify apparel checkout remains separate from commercial supply orders.

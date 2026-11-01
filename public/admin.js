@@ -75,6 +75,7 @@ function renderEditableOrderLines(items){
   const remove=document.createElement('button');remove.type='button';remove.className='admin-line-remove';remove.textContent='×';remove.dataset.lineIndex=String(index);remove.setAttribute('aria-label',`Remove supply line ${index+1}`);remove.disabled=items.length<=1;
   row.append(item,qty,remove);container.append(row);
  });
+ $('#detail-add-line').disabled=items.length>=50;
 }
 function openOrder(orderNumber){
  selectedOrder=orders.find(order=>order.orderNumber===orderNumber);if(!selectedOrder)return;
@@ -86,7 +87,7 @@ function openOrder(orderNumber){
  renderEditableOrderLines(selectedOrder.items.length?selectedOrder.items:[{item:'',qty:''}]);orderDialog.showModal();
 }
 function currentOrderItems(){return [...$('#detail-lines').children].map(row=>({item:$('[data-order-field="item"]',row).value.trim(),qty:$('[data-order-field="qty"]',row).value.trim()})).filter(line=>line.item);}
-$('#detail-add-line').addEventListener('click',()=>{const items=currentOrderItems();items.push({item:'',qty:''});renderEditableOrderLines(items);$('#detail-lines input[data-order-field="item"]:last-of-type')?.focus();});
+$('#detail-add-line').addEventListener('click',()=>{const items=currentOrderItems();items.push({item:'',qty:''});renderEditableOrderLines(items);$('#detail-lines')?.lastElementChild?.querySelector('[data-order-field="item"]')?.focus();});
 $('#detail-lines').addEventListener('click',event=>{const button=event.target.closest('[data-line-index]');if(!button)return;const items=[...$('#detail-lines').children].map(row=>({item:$('[data-order-field="item"]',row).value.trim(),qty:$('[data-order-field="qty"]',row).value.trim()}));items.splice(Number(button.dataset.lineIndex),1);renderEditableOrderLines(items.length?items:[{item:'',qty:''}]);});
 $('#admin-refresh').addEventListener('click',()=>{refreshOrders();refreshInventory();});
 $('#admin-search').addEventListener('input',renderOrders);$('#admin-status-filter').addEventListener('change',renderOrders);
