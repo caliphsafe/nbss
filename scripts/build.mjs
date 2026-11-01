@@ -1,9 +1,11 @@
 import {readFile,writeFile,mkdir,cp,rm} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
 import {normalize} from '../lib/catalog.mjs';
 import {escapeHTML as esc,money} from '../public/shop-utils.js';
 
 const raw=JSON.parse(await readFile(new URL('../data/catalog.json',import.meta.url),'utf8'));
 const products=raw.products.map(normalize);
+const assetVersion=createHash('sha256').update(await readFile('public/styles.css')).update(await readFile('public/app.js')).digest('hex').slice(0,12);
 await rm('dist',{recursive:true,force:true});
 await mkdir('dist',{recursive:true});
 await cp('public','dist',{recursive:true});
@@ -60,7 +62,7 @@ const footer=`<section class="counter-cta"><div class="counter-number">108</div>
 <dialog class="cart-dialog" aria-labelledby="cart-title"><div class="drawer-head"><div><span class="kicker">NBSS APPAREL ORDER</span><h2 id="cart-title">Shopping bag <span class="cart-count">0</span></h2></div><button class="icon-button close-cart" aria-label="Close shopping bag">${icon('close')}</button></div><div id="cart-items"></div><div id="cart-summary"></div></dialog><div id="toast" role="status" aria-live="polite" aria-hidden="true"></div>`;
 
 function page(title,description,content,active=''){
- return `<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)} | New Bedford Ship Supply</title><meta name="description" content="${esc(description)}"><meta name="theme-color" content="#a82024"><meta property="og:title" content="${esc(title)} | New Bedford Ship Supply"><meta property="og:description" content="${esc(description)}"><meta property="og:image" content="/images/chandlery.jpg"><meta property="og:type" content="website"><link rel="icon" href="/images/nbss-logo.png"><link rel="stylesheet" href="/fonts/fonts.css"><link rel="stylesheet" href="/styles.css"><script type="module" src="/app.js"></script></head><body id="top">${header(active)}<main id="main">${content}</main>${footer}</body></html>`;
+ return `<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)} | New Bedford Ship Supply</title><meta name="description" content="${esc(description)}"><meta name="theme-color" content="#a82024"><meta property="og:title" content="${esc(title)} | New Bedford Ship Supply"><meta property="og:description" content="${esc(description)}"><meta property="og:image" content="/images/chandlery.jpg"><meta property="og:type" content="website"><link rel="icon" href="/images/nbss-logo.png"><link rel="stylesheet" href="/fonts/fonts.css"><link rel="stylesheet" href="/styles.css?v=${assetVersion}"><script type="module" src="/app.js?v=${assetVersion}"></script></head><body id="top">${header(active)}<main id="main">${content}</main>${footer}</body></html>`;
 }
 
 const favorites=['nbss-classic-snapback-trucker-hat','nbss-x-carhartt-rain-defender-hoodie','nbss-shackle-trucker-hat','nbss-classic-crewneck-t-shirt'].map(h=>products.find(p=>p.handle===h));
