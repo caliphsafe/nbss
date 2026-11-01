@@ -121,6 +121,34 @@ if($('#product-grid')){
 }
 function orderLineId(){return `line-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;}
 function saveOrderLines(){try{localStorage.setItem('nbss-order-lines',JSON.stringify(orderLines));}catch{}}
+let inventoryLoadPromise;
+function setInventoryHelp(message,{retry=false}={}){
+ const help=$('#inventory-help');if(!help)return;
+ help.textContent=message;
+ if(!retry)return;
+ const button=document.createElement('button');button.type='button';button.className='inventory-retry';button.textContent='Try again';button.addEventListener('click',()=>loadInventorySuggestions());
+ help.append(document.createTextNode(' '),button);
+}
+async function loadInventorySuggestions(){
+ if(inventoryLoadPromise)return inventoryLoadPromise;
+ setInventoryHelp('Loading the supply list…');
+ inventoryLoadPromise=(async()=>{
+  for(let attempt=0;attempt<2;attempt++){
+   try{
+    const response=await fetch('/api/inventory',{cache:'no-store'}),payload=await response.json().catch(()=>({}));
+    if(!response.ok||!Array.isArray(payload.items))throw new Error('The supply list could not be loaded.');
+    inventorySuggestions=payload.items.filter(item=>item&&typeof item.item==='string'&&item.item.trim()).map(item=>({item:item.item.trim(),category:String(item.category||''),unit:String(item.unit||'')}));
+    setInventoryHelp(inventorySuggestions.length?`${inventorySuggestions.length} supplies available. Search or browse the list, or write in what you need. NBSS will confirm availability.`:'No supplies are listed right now. Write in what you need, and NBSS will check availability.');
+    return true;
+   }catch{
+    if(attempt===0){await new Promise(resolve=>setTimeout(resolve,500));continue;}
+   }
+  }
+  setInventoryHelp("We can't load the supply list right now. You can still write in what you need.",{retry:true});
+  return false;
+ })().finally(()=>{inventoryLoadPromise=null;});
+ return inventoryLoadPromise;
+}
 function closeSupplySuggestions(field){
  if(!field)return;
  const panel=$('.supply-suggestions',field),input=$('[data-order-field="item"]',field),toggle=$('.supply-picker-toggle',field);
@@ -140,9 +168,9 @@ function showSupplySuggestions(input,{browse=false}={}){
  const matches=inventorySuggestions.filter(item=>!query||`${item.item} ${item.category} ${item.unit}`.toLocaleLowerCase().includes(query));
  list.replaceChildren();panel.hidden=false;panel.dataset.activeIndex='-1';
  const heading=$('.supply-suggestion-heading',panel);
- heading.textContent=matches.length?`${matches.length} ${matches.length===1?'MATCH':'MATCHES'} · ACTIVE INVENTORY`:'ACTIVE INVENTORY';
+ heading.textContent=matches.length?`${matches.length} ${matches.length===1?'RESULT':'RESULTS'} · AVAILABLE SUPPLIES`:'AVAILABLE SUPPLIES';
  const empty=$('.supply-suggestion-empty',panel);empty.hidden=matches.length>0;
- if(!matches.length)empty.textContent=query?'No matching inventory names. Keep typing to request a custom supply.':'No inventory names are available yet. You can still write in any supply.';
+ if(!matches.length)empty.textContent=query?'No matching supplies. Keep typing to request any item.':'No supplies are listed right now. You can still write in any item.';
  matches.forEach((item,index)=>{
   const option=document.createElement('div');option.className='supply-suggestion-option';option.id=`${list.id}-option-${index}`;option.setAttribute('role','option');option.setAttribute('aria-selected','false');option.tabIndex=-1;
   const name=document.createElement('strong');name.textContent=item.item;option.append(name);
@@ -168,8 +196,8 @@ function renderOrderLines(){
   const itemField=document.createElement('div');itemField.className='order-item-field';
   const itemLabel=document.createElement('label');itemLabel.htmlFor=itemId;itemLabel.textContent='SUPPLY ITEM';
   const control=document.createElement('div');control.className='supply-picker-control';
-  const itemInput=document.createElement('input');itemInput.type='text';itemInput.id=itemId;itemInput.maxLength=200;itemInput.autocomplete='off';itemInput.spellcheck=false;itemInput.dataset.orderField='item';itemInput.dataset.orderId=line.id;itemInput.placeholder='Search or write in any supply';itemInput.value=line.item;itemInput.setAttribute('role','combobox');itemInput.setAttribute('aria-autocomplete','list');itemInput.setAttribute('aria-haspopup','listbox');itemInput.setAttribute('aria-expanded','false');itemInput.setAttribute('aria-controls',listId);itemInput.setAttribute('aria-label',`Supply item ${index+1}`);
-  const toggle=document.createElement('button');toggle.type='button';toggle.className='supply-picker-toggle';toggle.setAttribute('aria-label','Browse active inventory suggestions');toggle.setAttribute('aria-controls',listId);toggle.setAttribute('aria-expanded','false');toggle.innerHTML='<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 7 6 6 6-6"/></svg>';
+  const itemInput=document.createElement('input');itemInput.type='text';itemInput.id=itemId;itemInput.maxLength=200;itemInput.autocomplete='off';itemInput.spellcheck=false;itemInput.dataset.orderField='item';itemInput.dataset.orderId=line.id;itemInput.placeholder='Find a supply or write one in';itemInput.value=line.item;itemInput.setAttribute('role','combobox');itemInput.setAttribute('aria-autocomplete','list');itemInput.setAttribute('aria-haspopup','listbox');itemInput.setAttribute('aria-expanded','false');itemInput.setAttribute('aria-controls',listId);itemInput.setAttribute('aria-label',`Supply item ${index+1}`);
+  const toggle=document.createElement('button');toggle.type='button';toggle.className='supply-picker-toggle';toggle.setAttribute('aria-label','Browse available supplies');toggle.setAttribute('aria-controls',listId);toggle.setAttribute('aria-expanded','false');toggle.innerHTML='<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 7 6 6 6-6"/></svg>';
   toggle.addEventListener('click',()=>{if(!$('.supply-suggestions',itemField).hidden){closeSupplySuggestions(itemField);return;}itemInput.focus();showSupplySuggestions(itemInput,{browse:true});});
   itemInput.addEventListener('focus',()=>{if(itemInput.value.trim())showSupplySuggestions(itemInput);});
   itemInput.addEventListener('keydown',event=>{
@@ -183,7 +211,7 @@ function renderOrderLines(){
   });
   const panel=document.createElement('div');panel.className='supply-suggestions';panel.hidden=true;panel.dataset.activeIndex='-1';
   const heading=document.createElement('div');heading.className='supply-suggestion-heading';heading.setAttribute('role','status');heading.setAttribute('aria-live','polite');
-  const list=document.createElement('div');list.className='supply-suggestion-results';list.id=listId;list.setAttribute('role','listbox');list.setAttribute('aria-label','Active inventory suggestions');
+  const list=document.createElement('div');list.className='supply-suggestion-results';list.id=listId;list.setAttribute('role','listbox');list.setAttribute('aria-label','Available supplies');
   const empty=document.createElement('p');empty.className='supply-suggestion-empty';empty.setAttribute('role','status');empty.setAttribute('aria-live','polite');empty.hidden=true;
   panel.append(heading,list,empty);
   control.append(itemInput,toggle);itemField.append(itemLabel,control,panel);
@@ -214,10 +242,7 @@ if($('#supply-order-form')){
   if(!orderLines.length)orderLines=[{id:orderLineId(),item:'',qty:''}];
   saveOrderLines();renderOrderLines();
  });
- fetch('/api/inventory',{cache:'no-store'}).then(async response=>{const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error();
-  inventorySuggestions=(Array.isArray(payload.items)?payload.items:[]).filter(item=>item&&typeof item.item==='string'&&item.item.trim()).map(item=>({item:item.item.trim(),category:String(item.category||''),unit:String(item.unit||'')}));
-  $('#inventory-help').textContent=inventorySuggestions.length?`${inventorySuggestions.length} active inventory suggestions. Search or browse the list, or write in any supply. NBSS confirms availability.`:'No inventory suggestions are listed yet. Write in any supply; the desk can maintain suggestions from Admin.';
- }).catch(()=>{$('#inventory-help').textContent='Inventory suggestions are temporarily unavailable. Write in any supply.';});
+ loadInventorySuggestions();
 }
 function writeRequestMessage(result,{title,detail,warning=''}={}){
  result.replaceChildren();result.hidden=false;
