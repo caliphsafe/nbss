@@ -5,11 +5,18 @@ import {escapeHTML as esc,money} from '../public/shop-utils.js';
 
 const raw=JSON.parse(await readFile(new URL('../data/catalog.json',import.meta.url),'utf8'));
 const products=raw.products.map(normalize);
-const assetVersion=createHash('sha256').update(await readFile('public/styles.css')).update(await readFile('public/app.js')).digest('hex').slice(0,12);
+const assetVersion=createHash('sha256')
+ .update(await readFile('public/styles.css'))
+ .update(await readFile('public/app.js'))
+ .update(await readFile('public/admin.js'))
+ .update(await readFile('public/admin-documents.js'))
+ .digest('hex').slice(0,12);
 await rm('dist',{recursive:true,force:true});
 await mkdir('dist',{recursive:true});
 await cp('public','dist',{recursive:true});
 await writeFile('dist/catalog.json',JSON.stringify({products,updatedAt:raw.updatedAt}));
+const adminHTML=await readFile('dist/admin.html','utf8');
+await writeFile('dist/admin.html',adminHTML.replaceAll('__ASSET_VERSION__',assetVersion));
 
 const icon=(name)=>`<svg class="icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${({
  arrow:'<path d="M4 12h15m-5-5 5 5-5 5"/>',
