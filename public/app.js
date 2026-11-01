@@ -163,7 +163,7 @@ function selectSupplySuggestion(input,value){
 }
 function showSupplySuggestions(input,{browse=false}={}){
  const field=input.closest('.order-item-field'),panel=$('.supply-suggestions',field),list=$('[role="listbox"]',panel),toggle=$('.supply-picker-toggle',field);
- const query=input.value.trim().toLocaleLowerCase();
+ const query=browse?'':input.value.trim().toLocaleLowerCase();
  if(!browse&&!query){closeSupplySuggestions(field);return;}
  const matches=inventorySuggestions.filter(item=>!query||`${item.item} ${item.category} ${item.unit}`.toLocaleLowerCase().includes(query));
  list.replaceChildren();panel.hidden=false;panel.dataset.activeIndex='-1';
