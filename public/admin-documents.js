@@ -2,7 +2,7 @@ const $=(selector,root=document)=>root.querySelector(selector);
 const INVOICE_STATUSES=['Draft','Issued','Paid','Void'];
 const DA_STATUSES=['Draft','Issued','Settled','Void'];
 const DA_CATEGORIES=['Port authority dues','Operational port costs','Third-party disbursements','Agency fees','Other'];
-let invoices=[],disbursements=[],orders=[],inventory=[],activeKind='invoice',editingDocument=null,loading=false;
+let invoices=[],disbursements=[],orders=[],inventory=[],activeKind='invoice',editingDocument=null,loading=false,orderSourceWarning='';
 const invoicePicker=$('#invoice-order-picker-dialog'),editor=$('#billing-document-dialog'),preview=$('#document-preview-dialog');
 
 function banner(text,type='info'){
@@ -37,13 +37,36 @@ function documentActions(doc,kind){
  const print=document.createElement('button');print.type='button';print.className='admin-open-request document-row-action';print.textContent='PRINT / PDF';print.addEventListener('click',()=>showPreview(kind,doc));
  cell.append(edit,print);return cell;
 }
+function vesselGroupLabel(value){return String(value||'').trim()||'Vessel / company not entered';}
+function groupByVessel(records,getVessel){
+ const groups=new Map();
+ for(const record of records){
+  const vessel=String(getVessel(record)||'').trim(),key=vessel.toLocaleLowerCase();
+  if(!groups.has(key))groups.set(key,{label:vesselGroupLabel(vessel),records:[]});
+  groups.get(key).records.push(record);
+ }
+ return [...groups.values()].sort((a,b)=>a.label.localeCompare(b.label,undefined,{sensitivity:'base'}));
+}
+function invoiceGroupHeading(label,count){
+ const row=document.createElement('tr');row.className='invoice-vessel-group-row';
+ const cell=document.createElement('td');cell.colSpan=6;
+ const name=document.createElement('strong');name.textContent=label;
+ const total=document.createElement('small');total.textContent=`${count} invoice${count===1?'':'s'}`;
+ cell.append(name,total);row.append(cell);return row;
+}
 function renderInvoices(){
  const body=$('#invoice-list');body.replaceChildren();$('#invoice-empty').hidden=invoices.length>0;$('.admin-doc-table', $('#invoice-documents-panel')).hidden=invoices.length===0;
- for(const invoice of invoices){
-  const row=document.createElement('tr');textCell(row,invoice.invoiceNumber,'admin-ticket-cell');
-  const party=document.createElement('td');party.className='admin-contact-cell';const vessel=document.createElement('strong');vessel.textContent=invoice.vessel||'Vessel not entered';const customer=document.createElement('small');customer.textContent=invoice.customerName;party.append(vessel,customer);row.append(party);
-  textCell(row,dateLabel(invoice.issuedDate),'admin-date-cell');const status=document.createElement('td'),pill=document.createElement('span');pill.className=`admin-status-pill ${statusClass(invoice.status)}`;pill.textContent=invoice.status;status.append(pill);row.append(status);
-  textCell(row,invoice.totalDue===null?'Incomplete draft':currency(invoice.totalDue,invoice.currency),'document-money-cell');row.append(documentActions(invoice,'invoice'));body.append(row);
+ for(const group of groupByVessel(invoices,invoice=>invoice.vessel)){
+  group.records.sort((a,b)=>String(b.updatedAt||b.issuedDate||'').localeCompare(String(a.updatedAt||a.issuedDate||'')));
+  body.append(invoiceGroupHeading(group.label,group.records.length));
+  for(const invoice of group.records){
+   const row=document.createElement('tr'),number=document.createElement('td');number.className='admin-ticket-cell';const reference=document.createElement('strong');reference.textContent=invoice.invoiceNumber;number.append(reference);
+   if(invoice.orderNumber){const source=document.createElement('small');source.textContent=`Order ${invoice.orderNumber}`;number.append(source);}
+   row.append(number);
+   const party=document.createElement('td');party.className='admin-contact-cell';const vessel=document.createElement('strong');vessel.textContent=vesselGroupLabel(invoice.vessel);const customer=document.createElement('small');customer.textContent=invoice.customerName;party.append(vessel,customer);row.append(party);
+   textCell(row,dateLabel(invoice.issuedDate),'admin-date-cell');const status=document.createElement('td'),pill=document.createElement('span');pill.className=`admin-status-pill ${statusClass(invoice.status)}`;pill.textContent=invoice.status;status.append(pill);row.append(status);
+   textCell(row,invoice.totalDue===null?'Incomplete draft':currency(invoice.totalDue,invoice.currency),'document-money-cell');row.append(documentActions(invoice,'invoice'));body.append(row);
+  }
  }
 }
 function balanceSummary(account){
@@ -78,22 +101,36 @@ function setDocumentPanel(kind){
 }
 
 async function fetchOrderSources(){
- const [orderResponse,inventoryResponse]=await Promise.all([
-  fetch('/api/supply-orders',{cache:'no-store',credentials:'same-origin'}),
-  fetch('/api/inventory',{cache:'no-store',credentials:'same-origin'})
- ]);
- const [orderData,inventoryData]=await Promise.all([orderResponse.json().catch(()=>({})),inventoryResponse.json().catch(()=>({}))]);
+ const orderResponse=await fetch('/api/supply-orders',{cache:'no-store',credentials:'same-origin'});
+ const orderData=await orderResponse.json().catch(()=>({}));
  if(!orderResponse.ok)throw new Error(orderData.error||'Orders could not be loaded.');
- if(!inventoryResponse.ok)throw new Error(inventoryData.error||'Inventory pricing could not be loaded.');
- orders=Array.isArray(orderData.orders)?orderData.orders:[];inventory=Array.isArray(inventoryData.items)?inventoryData.items:[];
+ orders=Array.isArray(orderData.orders)?orderData.orders:[];
+ orderSourceWarning='';
+ try{
+  const inventoryResponse=await fetch('/api/inventory',{cache:'no-store',credentials:'same-origin'}),inventoryData=await inventoryResponse.json().catch(()=>({}));
+  if(!inventoryResponse.ok)throw new Error(inventoryData.error||'Inventory pricing could not be loaded.');
+  inventory=Array.isArray(inventoryData.items)?inventoryData.items:[];
+ }catch{
+  inventory=[];orderSourceWarning='Inventory pricing could not be loaded. Enter and confirm each unit and price manually.';
+ }
 }
 function renderOrderPicker(query=''){
  const host=$('#invoice-order-picker');host.replaceChildren();const normalized=query.trim().toLowerCase();
- const matches=orders.filter(order=>[order.orderNumber,order.company,order.name,order.phone,...(order.items||[]).map(line=>line.item)].join(' ').toLowerCase().includes(normalized));
+ if(orderSourceWarning){const warning=document.createElement('p');warning.className='document-order-warning';warning.textContent=orderSourceWarning;host.append(warning);}
+ const matches=orders.filter(order=>[order.orderNumber,order.status,order.company,order.name,order.phone,order.neededBy,order.handoff,order.message,order.staffNotes,...(order.items||[]).flatMap(line=>[line.item,line.qty])].join(' ').toLowerCase().includes(normalized));
  if(!matches.length){const empty=document.createElement('p');empty.className='admin-empty-state';empty.textContent=orders.length?'No orders match that search.':'No supply orders are available yet.';host.append(empty);return;}
- for(const order of matches){
-  const card=document.createElement('article');card.className='document-order-card';const info=document.createElement('div');const number=document.createElement('strong');number.textContent=order.orderNumber;const vessel=document.createElement('span');vessel.textContent=order.company||order.name;const lines=document.createElement('small');lines.textContent=(order.items||[]).map(line=>`${line.item}${line.qty?` · requested ${line.qty}`:''}`).join('  /  ');info.append(number,vessel,lines);
-  const button=document.createElement('button');button.type='button';button.className='button';button.textContent='Start invoice →';button.addEventListener('click',()=>{invoicePicker.close();openFromOrder(order);});card.append(info,button);host.append(card);
+ for(const group of groupByVessel(matches,order=>order.company)){
+  const section=document.createElement('section');section.className='document-order-group';const heading=document.createElement('div');heading.className='document-order-group-head';const title=document.createElement('h3');title.textContent=group.label;const count=document.createElement('small');count.textContent=`${group.records.length} order${group.records.length===1?'':'s'}`;heading.append(title,count);const list=document.createElement('div');list.className='document-order-group-list';section.append(heading,list);
+  for(const order of group.records){
+   const card=document.createElement('article');card.className='document-order-card';const info=document.createElement('div');info.className='document-order-main';const top=document.createElement('div');top.className='document-order-card-top';const reference=document.createElement('div');reference.className='document-order-reference';const number=document.createElement('strong');number.textContent=order.orderNumber;const submitted=document.createElement('small');submitted.textContent=`Submitted ${dateTimeLabel(order.createdAt)}`;reference.append(number,submitted);const status=document.createElement('span');status.className=`admin-status-pill ${statusClass(order.status||'New')}`;status.textContent=order.status||'New';top.append(reference,status);
+   const contact=document.createElement('p');contact.className='document-order-contact';contact.textContent=[order.name,order.phone].filter(Boolean).join(' · ')||'No contact details entered';
+   const facts=document.createElement('div');facts.className='document-order-facts';const needed=document.createElement('span');needed.textContent=`Needed by: ${order.neededBy?dateLabel(order.neededBy):'Not specified'}`;const handoff=document.createElement('span');handoff.textContent=`Handoff: ${order.handoff||'Not specified'}`;facts.append(needed,handoff);
+   const lines=document.createElement('p');lines.className='document-order-lines';lines.textContent=(order.items||[]).map(line=>`${line.item}${line.qty?` · requested ${line.qty}`:''}`).join('  /  ')||'No supply lines entered';info.append(top,contact,facts,lines);
+   if(order.message){const note=document.createElement('small');note.className='document-order-customer-note';note.textContent=`Customer notes: ${order.message}`;info.append(note);}
+   if(order.staffNotes){const note=document.createElement('small');note.className='document-order-customer-note';note.textContent=`Staff notes: ${order.staffNotes}`;info.append(note);}
+   const button=document.createElement('button');button.type='button';button.className='button';button.textContent='Start invoice →';button.addEventListener('click',()=>{invoicePicker.close();openFromOrder(order);});card.append(info,button);list.append(card);
+  }
+  host.append(section);
  }
 }
 $('#invoice-order-search').addEventListener('input',event=>renderOrderPicker(event.target.value));
@@ -106,10 +143,26 @@ $('#disbursement-new').addEventListener('click',()=>openDisbursement());
 
 function defaultInvoice(order=null){
  let notes='';const lines=(order?.items||[]).map(line=>{
-  const stock=inventory.find(item=>item.item.toLowerCase()===line.item.toLowerCase());
-  return {description:line.item,qty:'',unit:stock?.unit||'',unitPrice:stock?.unitPrice??''};
+  const description=String(line.item||'').trim(),stock=inventory.find(item=>String(item.item||'').trim().toLowerCase()===description.toLowerCase());
+  return {description,qty:'',unit:stock?.unit||'',unitPrice:stock?.unitPrice??''};
  });
- if(order)notes=`Source order ${order.orderNumber}. Customer requested: ${(order.items||[]).map(line=>`${line.item}${line.qty?` — ${line.qty}`:''}`).join('; ')}. Confirm actual goods delivered before issuing.`;
+ if(order){
+  const excerpt=(value,limit)=>{const content=String(value||'');return content.length>limit?`${content.slice(0,limit-1)}…`:content;};
+  const requested=excerpt((order.items||[]).map(line=>`${line.item}${line.qty?` — ${line.qty}`:''}`).join('; '),800);
+  const sections=[
+   `SOURCE ORDER: ${order.orderNumber||'Not assigned'}`,
+   `Order status: ${order.status||'New'}`,
+   `Order contact: ${order.name||'Not provided'}${order.phone?` · ${order.phone}`:''}`,
+   `Vessel / company: ${order.company||'Not entered'}`,
+   `Needed by: ${order.neededBy||'Not specified'}`,
+   `Preferred handoff: ${order.handoff||'Not specified'}`,
+   `Requested supplies: ${requested||'None entered'}`,
+   order.message?`Customer notes: ${excerpt(order.message,600)}`:'',
+   order.staffNotes?`Order staff notes: ${excerpt(order.staffNotes,600)}`:'',
+   'Order quantities and specifications are requests. Confirm the actual goods delivered, billed quantities, units, prices, and applicable tax before issuing.'
+  ].filter(Boolean);
+  notes=sections.join('\n').slice(0,3000);
+ }
  return {invoiceNumber:'Assigned on save',status:'Draft',issuedDate:today(),dueDate:'',customerName:order?.name||'',billingAddress:'',vessel:order?.company||'',imoNumber:'',deliveryDate:'',deliveryLocation:'',poReference:'',paymentTerms:'',currency:'USD',orderNumber:order?.orderNumber||'',lineItems:lines.length?lines:[{description:'',qty:'',unit:'',unitPrice:''}],taxRate:'',paymentInstructions:'',staffNotes:notes};
 }
 function fillInvoiceForm(invoice){

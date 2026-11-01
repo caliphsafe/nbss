@@ -8,9 +8,9 @@
   <title>Private Supply Desk | New Bedford Ship Supply</title>
   <link rel="icon" href="/images/nbss-logo.png">
   <link rel="stylesheet" href="/fonts/fonts.css">
-  <link rel="stylesheet" href="/styles.css">
-  <script type="module" src="/admin.js"></script>
-  <script type="module" src="/admin-documents.js"></script>
+  <link rel="stylesheet" href="/styles.css?v=__ASSET_VERSION__">
+  <script type="module" src="/admin.js?v=__ASSET_VERSION__"></script>
+  <script type="module" src="/admin-documents.js?v=__ASSET_VERSION__"></script>
 </head>
 <body class="admin-body">
   <header class="admin-topbar">
@@ -81,7 +81,7 @@
 
   <dialog class="admin-order-dialog billing-document-dialog" id="invoice-order-picker-dialog" aria-labelledby="invoice-order-picker-title">
     <div class="admin-dialog-head"><div><p class="kicker">Vessel invoice / source order</p><h2 id="invoice-order-picker-title">START FROM AN ORDER</h2></div><button type="button" class="admin-close" data-close-dialog="invoice-order-picker-dialog" aria-label="Close order picker">×</button></div>
-    <div class="admin-dialog-content"><p class="document-help">A submitted supply list is a request, not proof of delivery. Enter the actual billed quantities and confirm each price before issuing an invoice.</p><label class="admin-edit-field">FIND AN ORDER<input id="invoice-order-search" type="search" placeholder="Order number, vessel or customer"></label><div id="invoice-order-picker" class="document-order-picker"></div></div>
+    <div class="admin-dialog-content"><p class="document-help">Orders are grouped by vessel or company. Starting an invoice copies the order number, contact, vessel and requested supply lines; requested timing, handoff and customer notes stay in the private staff notes. Confirm the goods delivered, billed quantities, units, prices and tax before issuing.</p><label class="admin-edit-field">FIND AN ORDER<input id="invoice-order-search" type="search" placeholder="Order number, vessel, contact or supply"></label><div id="invoice-order-picker" class="document-order-picker"></div></div>
   </dialog>
 
   <dialog class="admin-order-dialog billing-document-dialog" id="billing-document-dialog" aria-labelledby="billing-document-title">
