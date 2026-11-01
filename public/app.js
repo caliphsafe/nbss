@@ -1,6 +1,6 @@
 import {safeCart,checkoutURL,money,escapeHTML as esc} from './shop-utils.js';
 const $=(s,root=document)=>root.querySelector(s), $$=(s,root=document)=>[...root.querySelectorAll(s)];
-let catalog=[],cart=[],live=false,toastTimer,orderLines=[];
+let catalog=[],cart=[],live=false,toastTimer,orderLines=[],inventorySuggestions=[];
 try{cart=safeCart(JSON.parse(localStorage.getItem('nbss-bag')||'[]'));}catch{}
 try{const saved=JSON.parse(localStorage.getItem('nbss-order-lines')||'[]');if(Array.isArray(saved))orderLines=saved.filter(x=>x&&typeof x==='object').slice(0,50).map((x,i)=>({id:String(x.id||`line-${i}`),item:String(x.item||'').slice(0,200),qty:String(x.qty||'').slice(0,100)}));}catch{}
 const dialog=$('.cart-dialog');
@@ -121,17 +121,76 @@ if($('#product-grid')){
 }
 function orderLineId(){return `line-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;}
 function saveOrderLines(){try{localStorage.setItem('nbss-order-lines',JSON.stringify(orderLines));}catch{}}
+function closeSupplySuggestions(field){
+ if(!field)return;
+ const panel=$('.supply-suggestions',field),input=$('[data-order-field="item"]',field),toggle=$('.supply-picker-toggle',field);
+ if(panel){panel.hidden=true;panel.querySelector('[role="listbox"]')?.replaceChildren();panel.dataset.activeIndex='-1';}
+ input?.setAttribute('aria-expanded','false');input?.removeAttribute('aria-activedescendant');toggle?.setAttribute('aria-expanded','false');
+}
+function closeAllSupplySuggestions(){ $$('.order-item-field').forEach(closeSupplySuggestions); }
+function selectSupplySuggestion(input,value){
+ const field=input.closest('.order-item-field'),line=orderLines.find(item=>item.id===input.dataset.orderId);
+ if(!line)return;
+ input.value=value;line.item=value;saveOrderLines();closeSupplySuggestions(field);input.focus();
+}
+function showSupplySuggestions(input,{browse=false}={}){
+ const field=input.closest('.order-item-field'),panel=$('.supply-suggestions',field),list=$('[role="listbox"]',panel),toggle=$('.supply-picker-toggle',field);
+ const query=input.value.trim().toLocaleLowerCase();
+ if(!browse&&!query){closeSupplySuggestions(field);return;}
+ const matches=inventorySuggestions.filter(item=>!query||`${item.item} ${item.category} ${item.unit}`.toLocaleLowerCase().includes(query));
+ list.replaceChildren();panel.hidden=false;panel.dataset.activeIndex='-1';
+ const heading=$('.supply-suggestion-heading',panel);
+ heading.textContent=matches.length?`${matches.length} ${matches.length===1?'MATCH':'MATCHES'} · ACTIVE INVENTORY`:'ACTIVE INVENTORY';
+ const empty=$('.supply-suggestion-empty',panel);empty.hidden=matches.length>0;
+ if(!matches.length)empty.textContent=query?'No matching inventory names. Keep typing to request a custom supply.':'No inventory names are available yet. You can still write in any supply.';
+ matches.forEach((item,index)=>{
+  const option=document.createElement('div');option.className='supply-suggestion-option';option.id=`${list.id}-option-${index}`;option.setAttribute('role','option');option.setAttribute('aria-selected','false');option.tabIndex=-1;
+  const name=document.createElement('strong');name.textContent=item.item;option.append(name);
+  const detail=[item.category,item.unit].filter(Boolean).join(' · ');
+  if(detail){const meta=document.createElement('span');meta.textContent=detail;option.append(meta);}
+  option.addEventListener('click',()=>selectSupplySuggestion(input,item.item));list.append(option);
+ });
+ input.setAttribute('aria-expanded','true');input.removeAttribute('aria-activedescendant');toggle.setAttribute('aria-expanded','true');
+}
+function setActiveSupplySuggestion(input,index){
+ const field=input.closest('.order-item-field'),list=$('[role="listbox"]',$('.supply-suggestions',field)),options=$$('[role="option"]',list);
+ if(!options.length)return;
+ const next=(index+options.length)%options.length;
+ options.forEach((option,i)=>option.setAttribute('aria-selected',String(i===next)));
+ list.closest('.supply-suggestions').dataset.activeIndex=String(next);input.setAttribute('aria-activedescendant',options[next].id);options[next].scrollIntoView({block:'nearest'});
+}
 function renderOrderLines(){
  const host=$('#order-lines');if(!host)return;
  host.replaceChildren();
  orderLines.forEach((line,index)=>{
   const row=document.createElement('div');row.className='order-line';
-  const itemLabel=document.createElement('label');itemLabel.innerHTML=`<span>SUPPLY ITEM</span><input type="text" maxlength="200" list="inventory-suggestions" data-order-field="item" data-order-id="${esc(line.id)}" placeholder="Type a supply or choose a suggestion" aria-label="Supply item ${index+1}">`;
-  itemLabel.querySelector('input').value=line.item;
+  const itemId=`order-item-${index+1}`,listId=`supply-suggestion-list-${index+1}`;
+  const itemField=document.createElement('div');itemField.className='order-item-field';
+  const itemLabel=document.createElement('label');itemLabel.htmlFor=itemId;itemLabel.textContent='SUPPLY ITEM';
+  const control=document.createElement('div');control.className='supply-picker-control';
+  const itemInput=document.createElement('input');itemInput.type='text';itemInput.id=itemId;itemInput.maxLength=200;itemInput.autocomplete='off';itemInput.spellcheck=false;itemInput.dataset.orderField='item';itemInput.dataset.orderId=line.id;itemInput.placeholder='Search or write in any supply';itemInput.value=line.item;itemInput.setAttribute('role','combobox');itemInput.setAttribute('aria-autocomplete','list');itemInput.setAttribute('aria-haspopup','listbox');itemInput.setAttribute('aria-expanded','false');itemInput.setAttribute('aria-controls',listId);itemInput.setAttribute('aria-label',`Supply item ${index+1}`);
+  const toggle=document.createElement('button');toggle.type='button';toggle.className='supply-picker-toggle';toggle.setAttribute('aria-label','Browse active inventory suggestions');toggle.setAttribute('aria-controls',listId);toggle.setAttribute('aria-expanded','false');toggle.innerHTML='<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 7 6 6 6-6"/></svg>';
+  toggle.addEventListener('click',()=>{if(!$('.supply-suggestions',itemField).hidden){closeSupplySuggestions(itemField);return;}itemInput.focus();showSupplySuggestions(itemInput,{browse:true});});
+  itemInput.addEventListener('focus',()=>{if(itemInput.value.trim())showSupplySuggestions(itemInput);});
+  itemInput.addEventListener('keydown',event=>{
+   const panel=$('.supply-suggestions',itemField),list=$('[role="listbox"]',panel),options=$$('[role="option"]',list),active=Number(panel.dataset.activeIndex??-1);
+   if(event.key==='Escape'&&!panel.hidden){event.preventDefault();closeSupplySuggestions(itemField);return;}
+   if(event.key==='ArrowDown'||event.key==='ArrowUp'){
+    if(panel.hidden)showSupplySuggestions(itemInput,{browse:!itemInput.value.trim()});
+    const refreshed=$$('[role="option"]',$('[role="listbox"]',$('.supply-suggestions',itemField)));
+    if(refreshed.length){event.preventDefault();const current=Number($('.supply-suggestions',itemField).dataset.activeIndex??-1),step=event.key==='ArrowDown'?1:-1;setActiveSupplySuggestion(itemInput,current<0?(step>0?0:refreshed.length-1):current+step);}
+   }else if(event.key==='Enter'&&!panel.hidden&&active>=0&&options[active]){event.preventDefault();options[active].click();}
+  });
+  const panel=document.createElement('div');panel.className='supply-suggestions';panel.hidden=true;panel.dataset.activeIndex='-1';
+  const heading=document.createElement('div');heading.className='supply-suggestion-heading';heading.setAttribute('role','status');heading.setAttribute('aria-live','polite');
+  const list=document.createElement('div');list.className='supply-suggestion-results';list.id=listId;list.setAttribute('role','listbox');list.setAttribute('aria-label','Active inventory suggestions');
+  const empty=document.createElement('p');empty.className='supply-suggestion-empty';empty.setAttribute('role','status');empty.setAttribute('aria-live','polite');empty.hidden=true;
+  panel.append(heading,list,empty);
+  control.append(itemInput,toggle);itemField.append(itemLabel,control,panel);
   const qtyLabel=document.createElement('label');qtyLabel.innerHTML=`<span>QTY / SIZE / SPEC</span><input type="text" maxlength="100" data-order-field="qty" data-order-id="${esc(line.id)}" placeholder="e.g. 200 ft, 3/4 inch" aria-label="Amount or size for supply line ${index+1}">`;
   qtyLabel.querySelector('input').value=line.qty;
   const remove=document.createElement('button');remove.type='button';remove.className='order-line-remove';remove.dataset.removeOrderLine=line.id;remove.setAttribute('aria-label',`Remove supply line ${index+1}`);remove.textContent='×';
-  row.append(itemLabel,qtyLabel,remove);host.append(row);
+  row.append(itemField,qtyLabel,remove);host.append(row);
  });
  const count=$('#order-line-count');if(count)count.textContent=`${orderLines.length} ${orderLines.length===1?'line':'lines'}`;
  const add=$('#add-order-line');if(add)add.disabled=orderLines.length>=50;
@@ -145,7 +204,10 @@ if($('#supply-order-form')){
   const input=event.target.closest('[data-order-field]');if(!input)return;
   const line=orderLines.find(item=>item.id===input.dataset.orderId);if(!line)return;
   line[input.dataset.orderField]=input.value.slice(0,input.dataset.orderField==='item'?200:100);saveOrderLines();
+  if(input.dataset.orderField==='item')showSupplySuggestions(input);
  });
+ $('#order-lines').addEventListener('focusout',event=>{const field=event.target.closest('.order-item-field');if(field&&!field.contains(event.relatedTarget))closeSupplySuggestions(field);});
+ document.addEventListener('pointerdown',event=>{if(!event.target.closest('.order-item-field'))closeAllSupplySuggestions();});
  $('#order-lines').addEventListener('click',event=>{
   const button=event.target.closest('[data-remove-order-line]');if(!button)return;
   orderLines=orderLines.filter(line=>line.id!==button.dataset.removeOrderLine);
@@ -153,9 +215,8 @@ if($('#supply-order-form')){
   saveOrderLines();renderOrderLines();
  });
  fetch('/api/inventory',{cache:'no-store'}).then(async response=>{const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error();
-  const datalist=$('#inventory-suggestions');datalist.replaceChildren();
-  (Array.isArray(payload.items)?payload.items:[]).forEach(item=>{const option=document.createElement('option');option.value=item.item;option.label=[item.category,item.unit].filter(Boolean).join(' · ');datalist.append(option);});
-  $('#inventory-help').textContent=datalist.options.length?`${datalist.options.length} active inventory suggestions loaded. Write in a custom supply if it is not listed.`:'No inventory suggestions are listed yet. Write in any supply; the desk can maintain suggestions from Admin.';
+  inventorySuggestions=(Array.isArray(payload.items)?payload.items:[]).filter(item=>item&&typeof item.item==='string'&&item.item.trim()).map(item=>({item:item.item.trim(),category:String(item.category||''),unit:String(item.unit||'')}));
+  $('#inventory-help').textContent=inventorySuggestions.length?`${inventorySuggestions.length} active inventory suggestions. Search or browse the list, or write in any supply. NBSS confirms availability.`:'No inventory suggestions are listed yet. Write in any supply; the desk can maintain suggestions from Admin.';
  }).catch(()=>{$('#inventory-help').textContent='Inventory suggestions are temporarily unavailable. Write in any supply.';});
 }
 function writeRequestMessage(result,{title,detail,warning=''}={}){
