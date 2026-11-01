@@ -111,7 +111,7 @@ function visibleInventory(){
 }
 function renderInventoryStats(){
  const active=inventory.filter(item=>item.active),low=active.filter(item=>item.reorderAt>0&&item.onHand<=item.reorderAt).length;
- const stats=[['Active supplies',active.length,'Suggested on order form'],['Low stock',low,'At or below reorder level'],['Archived',inventory.length-active.length,'Hidden from suggestions'],['Inventory rows',inventory.length,'Managed here or in the sheet']];
+ const stats=[['Active supplies',active.length,'Shown on order form'],['Low stock',low,'At or below reorder level'],['Archived',inventory.length-active.length,'Not shown to customers'],['Inventory rows',inventory.length,'Managed here or in the sheet']];
  const host=$('#inventory-stats');host.replaceChildren();for(const [label,value,note] of stats){const card=document.createElement('article');card.className='admin-stat-card';const title=document.createElement('span');title.textContent=label;const count=document.createElement('strong');count.textContent=String(value);const hint=document.createElement('small');hint.textContent=note;card.append(title,count,hint);host.append(card);}
 }
 function renderInventory(){
