@@ -1,6 +1,7 @@
 import {createSign} from 'node:crypto';
 import {INVENTORY_HEADERS} from '../../lib/inventory.mjs';
 import {ORDER_HEADERS} from '../../lib/supply-orders.mjs';
+import {DISBURSEMENT_HEADERS,INVOICE_HEADERS} from '../../lib/billing-documents.mjs';
 
 const TOKEN_URL='https://oauth2.googleapis.com/token';
 const SHEETS_URL='https://sheets.googleapis.com/v4/spreadsheets';
@@ -76,17 +77,49 @@ export async function updateOrderRow(sheetRow,order,updatedAt){
 }
 
 export async function getInventoryRows(){
-  return rowsFrom(await sheetsFetch(`values/${encodeURIComponent('Inventory!A:H')}`),INVENTORY_HEADERS,'Inventory');
+  return rowsFrom(await sheetsFetch(`values/${encodeURIComponent('Inventory!A:I')}`),INVENTORY_HEADERS,'Inventory');
 }
 
 export async function appendInventory(row){
-  return sheetsFetch(`values/${encodeURIComponent('Inventory!A:H')}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,{
+  return sheetsFetch(`values/${encodeURIComponent('Inventory!A:I')}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,{
     method:'POST',body:{majorDimension:'ROWS',values:[row]}
   });
 }
 
 export async function updateInventoryRow(sheetRow,row){
   return sheetsFetch('values:batchUpdate?valueInputOption=RAW',{method:'POST',body:{valueInputOption:'RAW',data:[
-    {range:`Inventory!A${sheetRow}:H${sheetRow}`,values:[row]}
+    {range:`Inventory!A${sheetRow}:I${sheetRow}`,values:[row]}
+  ]}});
+}
+
+export async function getInvoiceRows(){
+  return rowsFrom(await sheetsFetch(`values/${encodeURIComponent('Invoices!A:W')}`),INVOICE_HEADERS,'Invoices');
+}
+
+export async function appendInvoice(row){
+  return sheetsFetch(`values/${encodeURIComponent('Invoices!A:W')}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,{
+    method:'POST',body:{majorDimension:'ROWS',values:[row]}
+  });
+}
+
+export async function updateInvoiceRow(sheetRow,row){
+  return sheetsFetch('values:batchUpdate?valueInputOption=RAW',{method:'POST',body:{valueInputOption:'RAW',data:[
+    {range:`Invoices!A${sheetRow}:W${sheetRow}`,values:[row]}
+  ]}});
+}
+
+export async function getDisbursementRows(){
+  return rowsFrom(await sheetsFetch(`values/${encodeURIComponent('Disbursements!A:T')}`),DISBURSEMENT_HEADERS,'Disbursements');
+}
+
+export async function appendDisbursement(row){
+  return sheetsFetch(`values/${encodeURIComponent('Disbursements!A:T')}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,{
+    method:'POST',body:{majorDimension:'ROWS',values:[row]}
+  });
+}
+
+export async function updateDisbursementRow(sheetRow,row){
+  return sheetsFetch('values:batchUpdate?valueInputOption=RAW',{method:'POST',body:{valueInputOption:'RAW',data:[
+    {range:`Disbursements!A${sheetRow}:T${sheetRow}`,values:[row]}
   ]}});
 }

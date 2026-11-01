@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="/fonts/fonts.css">
   <link rel="stylesheet" href="/styles.css">
   <script type="module" src="/admin.js"></script>
+  <script type="module" src="/admin-documents.js"></script>
 </head>
 <body class="admin-body">
   <header class="admin-topbar">
@@ -24,7 +25,7 @@
     </section>
     <section id="admin-dashboard" hidden aria-label="Supply order management">
       <div class="admin-toolbar"><div class="admin-welcome"><span class="admin-live-dot" aria-hidden="true"></span><span>Signed in as <strong id="admin-user"></strong></span></div><div class="admin-toolbar-actions"><button type="button" class="admin-utility-button" id="admin-refresh">Refresh</button><button type="button" class="admin-utility-button" id="admin-export">Download orders CSV</button><button type="button" class="admin-utility-button" id="admin-sign-out">Sign out</button></div></div>
-      <nav class="admin-tabs" aria-label="Order desk sections"><button type="button" id="tab-orders" aria-selected="true">Orders</button><button type="button" id="tab-inventory" aria-selected="false">Inventory</button></nav>
+      <nav class="admin-tabs" aria-label="Order desk sections"><button type="button" id="tab-orders" aria-selected="true">Orders</button><button type="button" id="tab-inventory" aria-selected="false">Inventory</button><button type="button" id="tab-documents" aria-selected="false">Invoices &amp; DAs</button></nav>
       <section id="orders-view" aria-label="Supply orders">
         <div class="admin-stats" id="admin-stats" aria-label="Order counts"></div>
         <div class="admin-list-header"><div><p class="kicker">COUNTER MANIFEST</p><h2>SUPPLY ORDERS</h2></div><div class="admin-updated">Updated <time id="admin-updated-at">—</time><span> · Refreshes every minute</span></div></div>
@@ -35,8 +36,22 @@
         <div class="admin-stats" id="inventory-stats" aria-label="Inventory counts"></div>
         <div class="admin-list-header inventory-header"><div><p class="kicker">WORKING STOCK / NB-108</p><h2>SUPPLY INVENTORY</h2><p class="admin-section-copy">Edit the list, units, quantities and stock locations. Active item names appear as suggestions on the customer order form.</p></div><button type="button" class="button" id="inventory-add">Add inventory item <span aria-hidden="true">+</span></button></div>
         <div class="admin-filters"><label class="admin-search">FIND INVENTORY<input type="search" id="inventory-search" placeholder="Supply, category or location" autocomplete="off"></label><label class="inventory-toggle-filter">SHOW<select id="inventory-active-filter"><option value="active">Active items</option><option value="all">All items</option><option value="inactive">Archived items</option><option value="low">Low stock</option></select></label><span class="admin-result-count" id="inventory-result-count">0 items</span></div>
-        <div class="admin-table-wrap"><table class="admin-inventory-table"><thead><tr><th scope="col">SUPPLY ITEM</th><th scope="col">CATEGORY / UNIT</th><th scope="col">ON HAND</th><th scope="col">REORDER AT</th><th scope="col">LOCATION</th><th scope="col">STATUS</th><th scope="col"><span class="visually-hidden">Edit item</span></th></tr></thead><tbody id="inventory-list"></tbody></table><div class="admin-empty-state" id="inventory-empty" hidden><span class="admin-empty-stamp">NO INVENTORY</span><h3>THE STOCK LIST IS EMPTY.</h3><p>Add your current supplies here. No stock quantities are prefilled.</p><button type="button" class="button" id="inventory-empty-add">Add first item →</button></div></div>
+        <div class="admin-table-wrap"><table class="admin-inventory-table"><thead><tr><th scope="col">SUPPLY ITEM</th><th scope="col">CATEGORY / UNIT</th><th scope="col">UNIT PRICE</th><th scope="col">ON HAND</th><th scope="col">REORDER AT</th><th scope="col">LOCATION</th><th scope="col">STATUS</th><th scope="col"><span class="visually-hidden">Edit item</span></th></tr></thead><tbody id="inventory-list"></tbody></table><div class="admin-empty-state" id="inventory-empty" hidden><span class="admin-empty-stamp">NO INVENTORY</span><h3>THE STOCK LIST IS EMPTY.</h3><p>Add your current supplies here. No stock quantities are prefilled.</p><button type="button" class="button" id="inventory-empty-add">Add first item →</button></div></div>
         <p class="inventory-note">Low stock means the on-hand quantity is at or below the reorder level. Submitting a customer order does not automatically reserve or deduct stock.</p>
+      </section>
+      <section id="documents-view" aria-label="Vessel invoices and disbursement accounts" hidden>
+        <div class="admin-list-header documents-header"><div><p class="kicker">BILLING RECORDS / NB-108</p><h2>VESSEL DOCUMENTS</h2><p class="admin-section-copy">Prepare an itemized invoice for supplies delivered, or reconcile a port call when NBSS has an agency appointment.</p></div></div>
+        <div class="admin-banner documents-agency-note"><strong>Disbursement accounts are for appointed port agents.</strong> Use a DA only when the vessel owner or principal has appointed NBSS to arrange and account for port-call services. A supply order by itself is billed with a vessel supply invoice.</div>
+        <nav class="admin-tabs admin-document-tabs" aria-label="Billing document type"><button type="button" id="documents-invoice-tab" aria-selected="true">Vessel invoices</button><button type="button" id="documents-da-tab" aria-selected="false">Disbursement accounts</button></nav>
+        <section id="invoice-documents-panel" aria-label="Vessel invoices">
+          <div class="admin-list-header document-list-heading"><div><p class="kicker">SUPPLIES DELIVERED</p><h3>INVOICE REGISTER</h3></div><div class="document-create-actions"><button type="button" class="admin-utility-button" id="invoice-from-order">Start from an order</button><button type="button" class="button" id="invoice-new">New invoice <span aria-hidden="true">+</span></button></div></div>
+          <div class="admin-table-wrap"><table class="admin-doc-table"><thead><tr><th>INVOICE</th><th>VESSEL / CUSTOMER</th><th>ISSUED</th><th>STATUS</th><th>TOTAL</th><th><span class="visually-hidden">Document actions</span></th></tr></thead><tbody id="invoice-list"></tbody></table><div id="invoice-empty" class="admin-empty-state" hidden><span class="admin-empty-stamp">NO INVOICES</span><h3>NO VESSEL INVOICES YET.</h3><p>Create an invoice after staff verify the actual items, quantities and prices delivered.</p></div></div>
+        </section>
+        <section id="disbursement-documents-panel" aria-label="Port-call disbursement accounts" hidden>
+          <div class="admin-list-header document-list-heading"><div><p class="kicker">PORT-CALL RECONCILIATION</p><h3>DISBURSEMENT REGISTER</h3></div><button type="button" class="button" id="disbursement-new">New disbursement account <span aria-hidden="true">+</span></button></div>
+          <div class="admin-table-wrap"><table class="admin-doc-table"><thead><tr><th>DA REFERENCE</th><th>VESSEL / PRINCIPAL</th><th>PORT CALL</th><th>STATUS</th><th>BALANCE</th><th><span class="visually-hidden">Document actions</span></th></tr></thead><tbody id="disbursement-list"></tbody></table><div id="disbursement-empty" class="admin-empty-state" hidden><span class="admin-empty-stamp">NO ACCOUNTS</span><h3>NO PORT-CALL ACCOUNTS YET.</h3><p>Keep supplier invoices and voucher references with the supporting port-call records.</p></div></div>
+          <p class="inventory-note">Enter actual third-party costs, NBSS agency fees, and the advance received. Keep the underlying invoices and receipts with NBSS's accounting records; this sheet stores their reference, not the attachment itself.</p>
+        </section>
       </section>
     </section>
   </main>
@@ -57,11 +72,74 @@
   <dialog class="admin-order-dialog" id="inventory-dialog" aria-labelledby="inventory-dialog-title">
     <div class="admin-dialog-head"><div><p class="kicker">WORKING STOCK / EDIT ENTRY</p><h2 id="inventory-dialog-title">INVENTORY ITEM</h2></div><button type="button" class="admin-close" id="inventory-close" aria-label="Close inventory form">×</button></div>
     <div class="admin-dialog-content"><form id="inventory-form">
-      <div class="admin-form-grid"><label class="admin-edit-field">SUPPLY ITEM<input id="inventory-item" maxlength="200" required placeholder="e.g. 4-inch scallop rings"></label><label class="admin-edit-field">CATEGORY<input id="inventory-category" maxlength="100" placeholder="Scallop gear"></label><label class="admin-edit-field">UNIT<input id="inventory-unit" maxlength="50" placeholder="each, pair, ft, case"></label><label class="admin-edit-field">ON HAND<input id="inventory-on-hand" type="number" min="0" max="10000000" step="any" required value="0"></label><label class="admin-edit-field">REORDER AT<input id="inventory-reorder-at" type="number" min="0" max="10000000" step="any" required value="0"></label><label class="admin-edit-field">LOCATION<input id="inventory-location" maxlength="120" placeholder="Rack, shelf or bin"></label></div>
+      <div class="admin-form-grid"><label class="admin-edit-field">SUPPLY ITEM<input id="inventory-item" maxlength="200" required placeholder="e.g. 4-inch scallop rings"></label><label class="admin-edit-field">CATEGORY<input id="inventory-category" maxlength="100" placeholder="Scallop gear"></label><label class="admin-edit-field">UNIT<input id="inventory-unit" maxlength="50" placeholder="each, pair, ft, case"></label><label class="admin-edit-field">UNIT PRICE (USD)<input id="inventory-unit-price" type="number" min="0" max="1000000000" step="0.01" placeholder="Leave blank until confirmed"><small>Staff reference price. Confirm the actual price before issuing an invoice.</small></label><label class="admin-edit-field">ON HAND<input id="inventory-on-hand" type="number" min="0" max="10000000" step="any" required value="0"></label><label class="admin-edit-field">REORDER AT<input id="inventory-reorder-at" type="number" min="0" max="10000000" step="any" required value="0"></label><label class="admin-edit-field">LOCATION<input id="inventory-location" maxlength="120" placeholder="Rack, shelf or bin"></label></div>
       <label class="admin-edit-field">INTERNAL NOTES<textarea id="inventory-notes" rows="3" maxlength="1000" placeholder="Optional notes for the supply desk"></textarea></label>
       <label class="admin-checkbox-field"><input id="inventory-active" type="checkbox" checked><span><strong>Active supply</strong><small>Active item names can be suggested on the customer order form.</small></span></label>
       <div class="admin-dialog-footer"><p id="inventory-row-note" class="small"></p><button type="submit" class="button" id="inventory-save">Save inventory <span aria-hidden="true">→</span></button></div>
     </form></div>
+  </dialog>
+
+  <dialog class="admin-order-dialog billing-document-dialog" id="invoice-order-picker-dialog" aria-labelledby="invoice-order-picker-title">
+    <div class="admin-dialog-head"><div><p class="kicker">Vessel invoice / source order</p><h2 id="invoice-order-picker-title">START FROM AN ORDER</h2></div><button type="button" class="admin-close" data-close-dialog="invoice-order-picker-dialog" aria-label="Close order picker">×</button></div>
+    <div class="admin-dialog-content"><p class="document-help">A submitted supply list is a request, not proof of delivery. Enter the actual billed quantities and confirm each price before issuing an invoice.</p><label class="admin-edit-field">FIND AN ORDER<input id="invoice-order-search" type="search" placeholder="Order number, vessel or customer"></label><div id="invoice-order-picker" class="document-order-picker"></div></div>
+  </dialog>
+
+  <dialog class="admin-order-dialog billing-document-dialog" id="billing-document-dialog" aria-labelledby="billing-document-title">
+    <div class="admin-dialog-head"><div><p class="kicker" id="billing-document-kicker">NBSS BILLING / DOCUMENT</p><h2 id="billing-document-title">EDIT DOCUMENT</h2></div><button type="button" class="admin-close" data-close-dialog="billing-document-dialog" aria-label="Close document editor">×</button></div>
+    <div class="admin-dialog-content">
+      <div id="billing-document-error" class="admin-banner error" role="alert" hidden></div>
+      <form id="invoice-document-form" hidden>
+        <div class="admin-form-grid">
+          <label class="admin-edit-field">INVOICE NUMBER<input id="invoice-number" readonly></label>
+          <label class="admin-edit-field">STATUS<select id="invoice-status"><option>Draft</option><option>Issued</option><option>Paid</option><option>Void</option></select></label>
+          <label class="admin-edit-field">ISSUE DATE<input id="invoice-issued-date" type="date" required></label>
+          <label class="admin-edit-field">DUE DATE<input id="invoice-due-date" type="date"></label>
+          <label class="admin-edit-field">CUSTOMER / COMPANY<input id="invoice-customer" maxlength="160" required></label>
+          <label class="admin-edit-field">VESSEL / COMPANY<input id="invoice-vessel" maxlength="160"></label>
+          <label class="admin-edit-field">BILL-TO ADDRESS<textarea id="invoice-billing-address" rows="2" maxlength="1000"></textarea></label>
+          <label class="admin-edit-field">IMO NUMBER (OPTIONAL)<input id="invoice-imo" inputmode="numeric" maxlength="7" placeholder="Seven digits, if assigned"></label>
+          <label class="admin-edit-field">DELIVERY DATE<input id="invoice-delivery-date" type="date"></label>
+          <label class="admin-edit-field">DELIVERY PORT / BERTH<input id="invoice-delivery-location" maxlength="160"></label>
+          <label class="admin-edit-field">PO REFERENCE<input id="invoice-po-reference" maxlength="100"></label>
+          <label class="admin-edit-field">PAYMENT TERMS<input id="invoice-payment-terms" maxlength="160" placeholder="e.g. Due upon receipt"></label>
+          <label class="admin-edit-field">CURRENCY<input id="invoice-currency" maxlength="3" value="USD" required><small>Inventory price references are in USD. If using another currency, enter each line price in that invoice currency.</small></label>
+          <label class="admin-edit-field">SOURCE ORDER<input id="invoice-order-number" maxlength="60" placeholder="Optional order number"></label>
+          <label class="admin-edit-field">TAX RATE (%)<input id="invoice-tax-rate" type="number" min="0" max="100" step="0.01" placeholder="Enter 0 only if confirmed"><small>Do not assume a tax exemption. Confirm the applicable treatment with NBSS's tax preparer.</small></label>
+        </div>
+        <section class="admin-detail-section"><div class="admin-section-title-row"><h3>ACTUAL ITEMS BILLED</h3><button type="button" class="admin-text-button" id="invoice-add-line">+ Add line</button></div><div class="invoice-line-labels"><span>DESCRIPTION</span><span>QTY</span><span>UNIT</span><span>UNIT PRICE</span><span>LINE TOTAL</span><span></span></div><div id="invoice-lines" class="billing-lines"></div></section>
+        <div id="invoice-total-preview" class="billing-totals-preview"></div>
+        <label class="admin-edit-field">PAYMENT INSTRUCTIONS<input id="invoice-payment-instructions" maxlength="1000" placeholder="Optional. Enter NBSS-approved payment details only."></label>
+        <label class="admin-edit-field">PRIVATE STAFF NOTES<textarea id="invoice-staff-notes" rows="3" maxlength="3000"></textarea></label>
+      </form>
+      <form id="disbursement-document-form" hidden>
+        <div class="admin-banner documents-agency-note"><strong>Agency appointment required.</strong> This statement is for actual port-call costs managed by NBSS as the owner's appointed agent.</div>
+        <div class="admin-form-grid">
+          <label class="admin-edit-field">DA REFERENCE<input id="da-number" readonly></label>
+          <label class="admin-edit-field">STATUS<select id="da-status"><option>Draft</option><option>Issued</option><option>Settled</option><option>Void</option></select></label>
+          <label class="admin-edit-field">ISSUE DATE<input id="da-issued-date" type="date" required></label>
+          <label class="admin-edit-field">CURRENCY<input id="da-currency" maxlength="3" value="USD" required></label>
+          <label class="admin-edit-field">OWNER / PRINCIPAL<input id="da-principal" maxlength="180" required></label>
+          <label class="admin-edit-field">SETTLEMENT OFFICE<input id="da-settlement-office" maxlength="180"></label>
+          <label class="admin-edit-field">BILL-TO ADDRESS<textarea id="da-billing-address" rows="2" maxlength="1000"></textarea></label>
+          <label class="admin-edit-field">VESSEL<input id="da-vessel" maxlength="160" required></label>
+          <label class="admin-edit-field">IMO NUMBER (OPTIONAL)<input id="da-imo" inputmode="numeric" maxlength="7" placeholder="Seven digits, if assigned"></label>
+          <label class="admin-edit-field">PORT OF CALL<input id="da-port" maxlength="160"></label>
+          <label class="admin-edit-field">BERTH<input id="da-berth" maxlength="100"></label>
+          <label class="admin-edit-field">ARRIVAL (ATA)<input id="da-arrival" type="datetime-local"></label>
+          <label class="admin-edit-field">DEPARTURE (ATD)<input id="da-departure" type="datetime-local"></label>
+          <label class="admin-edit-field">PRE-FUNDING RECEIVED<input id="da-prefunding" type="number" min="0" max="1000000000000" step="0.01" placeholder="Enter 0 if none"><small>Record the actual advance received from the principal.</small></label>
+        </div>
+        <section class="admin-detail-section"><div class="admin-section-title-row"><h3>ACTUAL PORT-CALL COSTS</h3><button type="button" class="admin-text-button" id="da-add-line">+ Add cost</button></div><div class="da-line-labels"><span>CATEGORY</span><span>DESCRIPTION</span><span>PAYEE</span><span>VOUCHER / INVOICE REF.</span><span>AMOUNT</span><span></span></div><div id="da-lines" class="billing-lines"></div></section>
+        <div id="da-total-preview" class="billing-totals-preview"></div>
+        <label class="admin-edit-field">ACCOUNT NOTES<textarea id="da-notes" rows="3" maxlength="3000" placeholder="Reconciliation notes for this port call"></textarea></label>
+      </form>
+      <div class="admin-dialog-footer"><p class="small" id="document-save-note"></p><button type="button" class="button" id="document-save">Save draft <span aria-hidden="true">→</span></button></div>
+    </div>
+  </dialog>
+
+  <dialog class="admin-order-dialog document-preview-dialog" id="document-preview-dialog" aria-labelledby="document-preview-title">
+    <div class="admin-dialog-head"><div><p class="kicker">PRINT / SAVE AS PDF</p><h2 id="document-preview-title">DOCUMENT PREVIEW</h2></div><button type="button" class="admin-close" data-close-dialog="document-preview-dialog" aria-label="Close document preview">×</button></div>
+    <div class="admin-dialog-content"><div id="document-print-content"></div><div class="document-preview-actions"><button type="button" class="admin-utility-button" data-close-dialog="document-preview-dialog">Close preview</button><button type="button" class="button" id="document-print-button">Print / Save PDF <span aria-hidden="true">→</span></button></div></div>
   </dialog>
 </body>
 </html>
