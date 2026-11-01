@@ -1,6 +1,6 @@
 # NBSS order desk setup
 
-This connects the Chandlery write-in order form and private `/admin` staff page to one private Google spreadsheet. The workbook has two tabs: `Orders` and `Inventory`. Google Sheets API access runs from Vercel server functions. There is no customer email workflow, payment processing, stock reservation, automatic stock deduction or Apps Script in this setup.
+This connects the Chandlery write-in order form and private `/admin` staff page to one private Google spreadsheet. The workbook has four tabs: `Orders`, `Inventory`, `Invoices`, and `Disbursements`. Google Sheets API access runs from Vercel server functions. There is no customer email workflow, online payment processing, stock reservation, automatic stock deduction or Apps Script in this setup.
 
 ## 1. Create the Google spreadsheet
 
@@ -17,16 +17,32 @@ Created at	Order number	Status	Customer name	Phone	Vessel / company	Needed by	Pr
 6. Paste this tab-separated header into cell `A1` of `Inventory`:
 
 ```text
-Supply item	Category	Unit	On hand	Reorder at	Location	Notes	Active
+Supply item	Category	Unit	Unit price	On hand	Reorder at	Location	Notes	Active
 ```
 
-7. Keep the headers in this exact order. The application checks both header rows before reading or writing. Do not insert, remove, rename or rearrange columns.
-8. Optional: add starter inventory names beneath the header. For example, use `Scallop gear` for rings, links, chain, twine / tar; `Rope & wire` for rope / line, steel wire rope, rigging hardware, cut lengths; `Deck & safety` for foul-weather gear, deck boots, gloves, safety equipment; `Tools & repair` for hand tools, boat parts, construction supplies, cleaning supplies; and `Trip provisions` for frozen provisions, dry goods, drinks, crew essentials. These are suggestion names only; check the actual range of NBSS stock and set real quantities in the admin page. Leave `On hand` and `Reorder at` at `0` until staff verify them. No price column is needed because staff confirm pricing per order.
-9. In the `Active` column, use `TRUE` for supplies to suggest on the customer form and `FALSE` for archived items. In the admin page, use the **Active supply** checkbox. Archiving keeps historical/reference data and removes the name from customer suggestions.
-10. Format `On hand` and `Reorder at` as numbers. You may freeze row 1. Keep rows in place and do not sort, delete or move rows while the admin page is in use; the admin editor updates the matching sheet row. These formatting steps are optional; do not change the header values.
-11. Copy the spreadsheet ID from its URL. It is the text after `/spreadsheets/d/` and before `/edit`.
+7. Add a sheet tab named exactly `Invoices`. Paste this header into cell `A1`:
 
-The admin page is the intended way to update inventory and process orders. Every one of the eight `Inventory` columns has an editable control in the inventory editor. In the `Orders` tab, staff-editable order fields are status, customer name, phone, vessel / company, needed-by date, handoff, supply lines, customer notes and staff notes. The order number, submission key and timestamps are system-managed.
+```text
+Invoice number	Status	Issued date	Due date	Customer name	Billing address	Vessel / company	IMO number	Delivery date	Delivery port / berth	PO reference	Payment terms	Currency	Order number	Line items JSON	Subtotal	Tax rate (%)	Tax amount	Total due	Payment instructions	Staff notes	Created at	Updated at
+```
+
+8. Add a sheet tab named exactly `Disbursements`. Paste this header into cell `A1`:
+
+```text
+DA number	Status	Issued date	Owner / principal	Settlement office	Billing address	Vessel	IMO number	Port of call	Berth	Arrival (ATA)	Departure (ATD)	Currency	Pre-funding received	Line items JSON	Total costs	Balance / credit	Notes	Created at	Updated at
+```
+
+9. Keep the four header rows in these exact orders. The application checks every header before reading or writing. Do not rename or rearrange columns.
+10. Optional: add starter inventory names beneath the Inventory header. For example, use `Scallop gear` for rings, links, chain, twine / tar; `Rope & wire` for rope / line, steel wire rope, rigging hardware, cut lengths; `Deck & safety` for foul-weather gear, deck boots, gloves, safety equipment; `Tools & repair` for hand tools, boat parts, construction supplies, cleaning supplies; and `Trip provisions` for frozen provisions, dry goods, drinks, crew essentials. These are suggestion names only. Leave prices blank until NBSS confirms them, and leave stock quantities at `0` until staff verify them.
+11. Use `TRUE` in `Active` for supplies to suggest on the customer form and `FALSE` for archived items. In Admin, use the **Active supply** checkbox. Archiving keeps historical/reference data and removes the name from customer suggestions.
+12. Format `Unit price` as USD currency and `On hand` / `Reorder at` as numbers. You may freeze row 1. Do not sort or move rows while the admin page is in use; the row editor updates the matching sheet row.
+13. Copy the spreadsheet ID from its URL. It is the text after `/spreadsheets/d/` and before `/edit`.
+
+The admin page is the intended way to update inventory and process orders. All nine inventory fields are editable in the inventory editor. Unit prices are private staff references and never appear in the public suggestion list. When an invoice is made from an order, the request details are carried into private staff notes; staff enter the actual delivered quantity, unit, price and applicable tax before issuing it. The IMO field is optional.
+
+The invoice and disbursement tabs store each document's line detail as JSON so Admin can edit it as structured form fields. All visible invoice and DA fields are editable in Admin; document numbers, sheet row positions and creation/update timestamps are system-managed. For each third-party DA charge, enter the supplier invoice or voucher reference and retain the actual supporting invoice or receipt in NBSS's accounting records. The spreadsheet does not attach those source documents.
+
+A supplier invoice bills supplies actually delivered by NBSS. A Disbursement Account is a port-call reconciliation for cases where NBSS is formally appointed as the vessel owner's port agent. Do not use a DA as a general supply invoice. The DA calculates total actual costs less the advance received: a positive balance is due to NBSS, and a negative balance is a credit due to the principal.
 
 ## 2. Give the website private spreadsheet access
 
@@ -34,7 +50,7 @@ The admin page is the intended way to update inventory and process orders. Every
 2. In **APIs & Services → Library**, search for **Google Sheets API**, open it and select **Enable**.
 3. Go to **IAM & Admin → Service Accounts → Create service account**. Name it `nbss-order-desk`. Continue through the wizard; it does not need broad project roles.
 4. Open the new service account, choose **Keys → Add key → Create new key → JSON**, and download the JSON file temporarily. It contains `client_email` and `private_key`.
-5. Return to the private Google spreadsheet. Select **Share** and add the service account `client_email` as an **Editor**. This grants access to this workbook, which contains both tabs. Do not make the workbook public.
+5. Return to the private Google spreadsheet. Select **Share** and add the service account `client_email` as an **Editor**. This grants access to this workbook and all four tabs. Do not make the workbook public.
 6. Keep the JSON file secret. Do not commit it, attach it to an issue, paste it in this chat or put it in frontend code. After the values are saved in Vercel, store or delete the downloaded file according to NBSS credential policy.
 
 **Google Apps Script is not required.** The Vercel API functions use the Google Sheets API directly, so there is no Apps Script project, deployment URL, web-app access setting or script secret to configure.
@@ -83,14 +99,17 @@ For `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`, paste the whole multiline value withou
 3. Confirm the **Orders** view loads. Select **Inventory** and verify the sheet connection loads an empty inventory table or the starter names you entered.
 4. Add a clearly labeled test supply item in Admin. Confirm it appears as an inventory row in the Google `Inventory` tab and as a suggestion on `/marine-supply`.
 5. Submit one clearly labeled test order with a controlled name and phone number. Confirm the customer sees the **order number** and the availability/pricing note; confirm that the same order appears in the `Orders` tab and the Admin queue.
-6. In Admin, edit the test order's status, a supply line and staff notes; save and confirm the sheet updates. Edit the test inventory name, unit or quantity and confirm all changes save.
-7. Mark the test order **Cancelled** when finished. The order remains in the sheet as a record. Order submission does not deduct or reserve stock; staff should adjust inventory when the business's chosen fulfillment step is complete.
-8. Try the sign-in flow using an account not listed in `ADMIN_EMAILS`; it must not enter the desk.
+6. Edit the test inventory item and enter a clearly labeled test unit price. Confirm the value saves in the sheet and Admin. Public supply suggestions must still show only the item, category and unit.
+7. In Admin, edit the test order's status, a supply line and staff notes; save and confirm the sheet updates. Start an invoice from that test order, confirm the draft is watermarked in its print preview, then mark the test document **Void** after verification. Do not issue it as a real customer invoice.
+8. Confirm a test invoice remains in the Invoices tab and can be reopened and printed from Admin. Use a clearly marked test DA only to check the form; do not issue an actual DA unless NBSS has a port-agency appointment and real supporting vouchers. Mark test records **Void** when done.
+9. Mark the test order **Cancelled** when finished. The order remains in the sheet as a record. Order submission does not deduct or reserve stock; staff should adjust inventory when the business's chosen fulfillment step is complete.
+10. Try the sign-in flow using an account not listed in `ADMIN_EMAILS`; it must not enter the desk.
 
 ## Troubleshooting
 
-- **The form says inventory suggestions are unavailable:** order entry still accepts write-in supplies. Check the `Inventory` tab name and exact eight headers, the spreadsheet ID, the service-account share, and Vercel variables.
-- **The admin page says it cannot reach the sheet:** confirm the `Orders` and `Inventory` tabs and exact header rows; confirm the Sheets API is enabled and the service account still has Editor access; then redeploy if a Vercel variable changed.
+- **The form says inventory suggestions are unavailable:** order entry still accepts write-in supplies. Check the `Inventory` tab name and exact nine headers, the spreadsheet ID, the service-account share, and Vercel variables.
+- **The admin page says it cannot reach a register:** confirm all four tab names and exact header rows; confirm the Sheets API is enabled and the service account still has Editor access; then redeploy if a Vercel variable changed.
+- **Invoices or DAs do not load:** confirm the `Invoices` and `Disbursements` tabs are present with the exact headers above. The backend does not create tabs automatically.
 - **Google sign-in returns a redirect error:** make sure the authorized redirect URI and `APP_BASE_URL` use the same Production hostname, and that the URI ends in `/api/admin-auth-callback`.
 - **A staff member is denied:** add their Google identity to `ADMIN_EMAILS`, check for whitespace or spelling mistakes, and redeploy after changing the Vercel variable.
 - **The order confirmation is not shown:** the number only appears after the row is written successfully. Check the order sheet and Vercel function logs before asking the customer to resubmit; the submission key prevents a repeated click from creating a second row in normal retry cases.

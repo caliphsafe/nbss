@@ -10,7 +10,7 @@ A research-led storefront rebuild for New Bedford's working chandlery, using the
 - Same-origin `/api/catalog` Vercel function refreshes public Shopify prices and variant availability. A dated catalog snapshot allows browsing during upstream outages. Shopify is authoritative for inventory, tax, shipping and payment.
 - A commercial-supply desk covers scallop gear, rope and wire, deck and safety gear, tools, provisions, pickup and dock-delivery inquiries.
 - The Chandlery uses a write-in order form with multiple editable and removable lines. Active inventory names from the private Google Sheet appear as optional suggestions; custom supplies are always allowed. The customer sees an order number, and NBSS confirms availability and pricing.
-- Supply orders and inventory live in separate tabs in one private Google spreadsheet. `/admin` is a staff-only Google sign-in workspace for processing orders, editing order details, maintaining every inventory field, tracking low stock, archiving items and exporting orders. No customer email, payment, stock reservation or automatic inventory deduction is part of this workflow.
+- Supply orders, priced inventory, supplier invoices and port-call disbursement accounts live in four tabs in one private Google spreadsheet. `/admin` is a staff-only Google sign-in workspace for processing orders, editing all inventory fields, tracking low stock, and creating, editing and printing vessel invoices and disbursement accounts. Prices stay private to staff. Supplier invoices use actual delivered quantities and confirmed prices; an IMO number is optional. A DA is for port calls where NBSS has been appointed as agent. The print preview opens the browser print dialog, where staff can print or save a PDF. No customer email, online payment, stock reservation or automatic inventory deduction is part of this workflow.
 - Responsive layouts, keyboard controls, accessible dialogs, reduced-motion support, local fonts, static HTML routes and descriptive metadata.
 
 ## Run
@@ -33,7 +33,7 @@ The connected Vercel project deploys updates from the repository's `main` branch
 
 ## Supply request backend setup
 
-Follow [the Google Sheets, Google Cloud and Vercel setup guide](docs/supply-orders-setup.md) before announcing the order desk. It lists exact `Orders` and `Inventory` headers, recommended starter inventory names and the server-side environment variables. Keep production credentials out of Git and do not point preview deployments at the live order sheet.
+Follow [the Google Sheets, Google Cloud and Vercel setup guide](docs/supply-orders-setup.md) before announcing the order desk. It lists exact `Orders`, `Inventory`, `Invoices` and `Disbursements` headers, recommended starter inventory names and the server-side environment variables. The existing private spreadsheet needs the new inventory price column and the two document tabs before this version is deployed. No new Vercel secrets or Apps Script are required. Keep production credentials out of Git and do not point preview deployments at the live order sheet.
 
 ## Shopify and domain handoff
 
@@ -58,10 +58,10 @@ The snapshot was imported on October 22, 2026. Product detail and bag prices/ava
 - Barlow and Barlow Condensed fonts: Google Fonts (SIL Open Font License, bundled in `public/fonts`).
 - Public catalog snapshot: `data/catalog.json`.
 - Company history, address, phone number, chandlery departments, public counter access and dock-delivery language were researched against NBSS's published company pages and local reporting.
-- Inventory starts empty; the suggested starter names in the setup guide are not preloaded stock. NBSS staff enter verified on-hand and reorder quantities and confirm pricing per order.
+- Inventory starter names are for suggestions only; they are not verified stock or prices. NBSS staff should enter confirmed unit prices and quantities in Admin. The stored unit price is a private reference and must be checked against the actual customer order before an invoice is issued.
 
 ## Verification
 
 - `npm run build` passes and generates 24 pages.
-- `npm test` passes 12 checks covering catalog and variant validity, order and inventory validation, spreadsheet row mapping, staff access, cross-origin mutation protection and generated internal links/assets.
+- `npm test` passes 15 checks covering catalog and variant validity, order and inventory validation, invoice and disbursement calculations, spreadsheet row mapping, staff access, cross-origin mutation protection and generated internal links/assets.
 - The existing Shopify apparel checkout remains separate from commercial supply orders.

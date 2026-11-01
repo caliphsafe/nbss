@@ -89,7 +89,7 @@ function openOrder(orderNumber){
 function currentOrderItems(){return [...$('#detail-lines').children].map(row=>({item:$('[data-order-field="item"]',row).value.trim(),qty:$('[data-order-field="qty"]',row).value.trim()})).filter(line=>line.item);}
 $('#detail-add-line').addEventListener('click',()=>{const items=currentOrderItems();items.push({item:'',qty:''});renderEditableOrderLines(items);$('#detail-lines')?.lastElementChild?.querySelector('[data-order-field="item"]')?.focus();});
 $('#detail-lines').addEventListener('click',event=>{const button=event.target.closest('[data-line-index]');if(!button)return;const items=[...$('#detail-lines').children].map(row=>({item:$('[data-order-field="item"]',row).value.trim(),qty:$('[data-order-field="qty"]',row).value.trim()}));items.splice(Number(button.dataset.lineIndex),1);renderEditableOrderLines(items.length?items:[{item:'',qty:''}]);});
-$('#admin-refresh').addEventListener('click',()=>{refreshOrders();refreshInventory();});
+$('#admin-refresh').addEventListener('click',()=>{refreshOrders();refreshInventory();window.dispatchEvent(new CustomEvent('nbss:refresh-documents'));});
 $('#admin-search').addEventListener('input',renderOrders);$('#admin-status-filter').addEventListener('change',renderOrders);
 $('#admin-detail-close').addEventListener('click',()=>orderDialog.close());orderDialog.addEventListener('click',event=>{if(event.target===orderDialog)orderDialog.close();});
 $('#admin-sign-out').addEventListener('click',async()=>{await fetch('/api/admin-logout',{method:'POST',credentials:'same-origin'}).catch(()=>{});location.reload();});
@@ -106,7 +106,7 @@ function visibleInventory(){
  const query=$('#inventory-search').value.trim().toLowerCase(),mode=$('#inventory-active-filter').value;
  return inventory.filter(item=>{
   const low=item.active&&item.reorderAt>0&&item.onHand<=item.reorderAt,active=mode==='all'||(mode==='active'&&item.active)||(mode==='inactive'&&!item.active)||(mode==='low'&&low);
-  const haystack=[item.item,item.category,item.unit,item.location,item.notes].join(' ').toLowerCase();return active&&(!query||haystack.includes(query));
+  const haystack=[item.item,item.category,item.unit,item.location,item.notes,item.unitPrice].join(' ').toLowerCase();return active&&(!query||haystack.includes(query));
  });
 }
 function renderInventoryStats(){
@@ -121,7 +121,7 @@ function renderInventory(){
  $('#inventory-empty p').textContent=inventory.length?'Adjust the search or display filter to see more items.':'Add your current supplies here. No stock quantities are prefilled.';
  for(const item of filtered){
   const row=document.createElement('tr');row.className='admin-inventory-row';const name=document.createElement('td');name.className='admin-inventory-name';const strong=document.createElement('strong');strong.textContent=item.item;const notes=document.createElement('small');notes.textContent=item.notes;name.append(strong,notes);row.append(name);
-  appendTextCell(row,[item.category,item.unit].filter(Boolean).join(' · ')||'—');appendTextCell(row,`${item.onHand}${item.unit?` ${item.unit}`:''}`,item.active&&item.reorderAt>0&&item.onHand<=item.reorderAt?'inventory-low':'');appendTextCell(row,`${item.reorderAt}${item.unit?` ${item.unit}`:''}`);appendTextCell(row,item.location||'—');
+  appendTextCell(row,[item.category,item.unit].filter(Boolean).join(' · ')||'—');appendTextCell(row,item.unitPrice===null||item.unitPrice===undefined?'Not set':`${new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(item.unitPrice)}${item.unit?` / ${item.unit}`:''}`);appendTextCell(row,`${item.onHand}${item.unit?` ${item.unit}`:''}`,item.active&&item.reorderAt>0&&item.onHand<=item.reorderAt?'inventory-low':'');appendTextCell(row,`${item.reorderAt}${item.unit?` ${item.unit}`:''}`);appendTextCell(row,item.location||'—');
   const statusCell=document.createElement('td'),status=document.createElement('span');status.className=`admin-status-pill ${item.active?'inventory-active':'inventory-archived'}`;status.textContent=item.active?'Active':'Archived';statusCell.append(status);row.append(statusCell);
   const action=document.createElement('td'),button=document.createElement('button');button.type='button';button.className='admin-open-request';button.textContent='EDIT →';button.addEventListener('click',()=>openInventory(item));action.append(button);row.append(action);body.append(row);
  }
@@ -136,18 +136,23 @@ async function refreshInventory(){
  finally{loadingInventory=false;}
 }
 function setActiveTab(name){
- const ordersActive=name==='orders';$('#tab-orders').setAttribute('aria-selected',String(ordersActive));$('#tab-inventory').setAttribute('aria-selected',String(!ordersActive));$('#orders-view').hidden=!ordersActive;$('#inventory-view').hidden=ordersActive;if(!ordersActive)refreshInventory();
+ const active=name==='inventory'?'inventory':name==='documents'?'documents':'orders';
+ for(const [tab,view,key] of [['tab-orders','orders-view','orders'],['tab-inventory','inventory-view','inventory'],['tab-documents','documents-view','documents']]){
+  $(`#${tab}`).setAttribute('aria-selected',String(active===key));$(`#${view}`).hidden=active!==key;
+ }
+ if(active==='inventory')refreshInventory();
+ if(active==='documents')window.dispatchEvent(new CustomEvent('nbss:refresh-documents'));
 }
-$('#tab-orders').addEventListener('click',()=>setActiveTab('orders'));$('#tab-inventory').addEventListener('click',()=>setActiveTab('inventory'));
+$('#tab-orders').addEventListener('click',()=>setActiveTab('orders'));$('#tab-inventory').addEventListener('click',()=>setActiveTab('inventory'));$('#tab-documents').addEventListener('click',()=>setActiveTab('documents'));
 $('#inventory-search').addEventListener('input',renderInventory);$('#inventory-active-filter').addEventListener('change',renderInventory);
 function openInventory(item=null){
  selectedInventory=item;$('#inventory-dialog-title').textContent=item?'EDIT INVENTORY ITEM':'ADD INVENTORY ITEM';
- $('#inventory-item').value=item?.item||'';$('#inventory-category').value=item?.category||'';$('#inventory-unit').value=item?.unit||'';$('#inventory-on-hand').value=String(item?.onHand??0);$('#inventory-reorder-at').value=String(item?.reorderAt??0);$('#inventory-location').value=item?.location||'';$('#inventory-notes').value=item?.notes||'';$('#inventory-active').checked=item?.active??true;$('#inventory-row-note').textContent=item?`Sheet row ${item.sheetRow} · Every inventory column is editable here.`:'A new row will be added to the Inventory tab.';inventoryDialog.showModal();
+ $('#inventory-item').value=item?.item||'';$('#inventory-category').value=item?.category||'';$('#inventory-unit').value=item?.unit||'';$('#inventory-unit-price').value=item?.unitPrice??'';$('#inventory-on-hand').value=String(item?.onHand??0);$('#inventory-reorder-at').value=String(item?.reorderAt??0);$('#inventory-location').value=item?.location||'';$('#inventory-notes').value=item?.notes||'';$('#inventory-active').checked=item?.active??true;$('#inventory-row-note').textContent=item?`Sheet row ${item.sheetRow} · Every inventory column is editable here.`:'A new row will be added to the Inventory tab.';inventoryDialog.showModal();
 }
 $('#inventory-add').addEventListener('click',()=>openInventory());$('#inventory-empty-add').addEventListener('click',()=>openInventory());$('#inventory-close').addEventListener('click',()=>inventoryDialog.close());inventoryDialog.addEventListener('click',event=>{if(event.target===inventoryDialog)inventoryDialog.close();});
 $('#inventory-form').addEventListener('submit',async event=>{
  event.preventDefault();const save=$('#inventory-save'),original=save.innerHTML;save.disabled=true;save.textContent='Saving…';
- const item={item:$('#inventory-item').value,category:$('#inventory-category').value,unit:$('#inventory-unit').value,onHand:$('#inventory-on-hand').value,reorderAt:$('#inventory-reorder-at').value,location:$('#inventory-location').value,notes:$('#inventory-notes').value,active:$('#inventory-active').checked};
+ const item={item:$('#inventory-item').value,category:$('#inventory-category').value,unit:$('#inventory-unit').value,unitPrice:$('#inventory-unit-price').value,onHand:$('#inventory-on-hand').value,reorderAt:$('#inventory-reorder-at').value,location:$('#inventory-location').value,notes:$('#inventory-notes').value,active:$('#inventory-active').checked};
  try{
   const editing=Boolean(selectedInventory),response=await fetch('/api/inventory',{method:editing?'PATCH':'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify(editing?{sheetRow:selectedInventory.sheetRow,item}:{item})}),payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload.error||'Inventory could not be saved.');
   if(editing){const index=inventory.findIndex(row=>row.sheetRow===selectedInventory.sheetRow);if(index>=0)inventory[index]=payload.item;}else inventory.push(payload.item);
@@ -163,4 +168,4 @@ $('#admin-export').addEventListener('click',()=>{
 });
 
 loadSession().catch(error=>setSignedOut(error.message));
-window.setInterval(()=>{if(document.hidden||dashboard.hidden)return;if($('#orders-view').hidden)refreshInventory();else refreshOrders();},60_000);
+window.setInterval(()=>{if(document.hidden||dashboard.hidden)return;if(!$('#orders-view').hidden)refreshOrders();else if(!$('#inventory-view').hidden)refreshInventory();else window.dispatchEvent(new CustomEvent('nbss:refresh-documents'));},60_000);
