@@ -1,8 +1,8 @@
 import {safeCart,checkoutURL,money,escapeHTML as esc} from './shop-utils.js';
 const $=(s,root=document)=>root.querySelector(s), $$=(s,root=document)=>[...root.querySelectorAll(s)];
-let catalog=[],cart=[],live=false,toastTimer,supplyTrip=[];
+let catalog=[],cart=[],live=false,toastTimer,orderLines=[];
 try{cart=safeCart(JSON.parse(localStorage.getItem('nbss-bag')||'[]'));}catch{}
-try{const savedTrip=JSON.parse(localStorage.getItem('nbss-supply-trip')||'[]');if(Array.isArray(savedTrip))supplyTrip=savedTrip.filter(x=>x&&typeof x==='object').slice(0,100).map((x,i)=>({id:String(x.id||`restored-${i}`),item:String(x.item||'').slice(0,200),qty:String(x.qty||'').slice(0,100)}));}catch{}
+try{const saved=JSON.parse(localStorage.getItem('nbss-order-lines')||'[]');if(Array.isArray(saved))orderLines=saved.filter(x=>x&&typeof x==='object').slice(0,50).map((x,i)=>({id:String(x.id||`line-${i}`),item:String(x.item||'').slice(0,200),qty:String(x.qty||'').slice(0,100)}));}catch{}
 const dialog=$('.cart-dialog');
 function dismissToast(){
  clearTimeout(toastTimer);toastTimer=undefined;
@@ -10,7 +10,6 @@ function dismissToast(){
  notice.classList.remove('visible');notice.setAttribute('aria-hidden','true');
 }
 function toast(message){
- if(document.body.classList.contains('trip-ticket-open')){dismissToast();return;}
  const notice=$('#toast');if(!notice)return;
  clearTimeout(toastTimer);notice.textContent=message;notice.setAttribute('aria-hidden','false');notice.classList.add('visible');
  toastTimer=setTimeout(dismissToast,2500);
@@ -20,7 +19,7 @@ function updateCounts(){const count=cart.reduce((s,x)=>s+x.quantity,0);$$('.cart
 updateCounts();
 const menu=$('.mobile-toggle');
 menu.addEventListener('click',()=>{const open=menu.getAttribute('aria-expanded')!=='true';menu.setAttribute('aria-expanded',String(open));menu.setAttribute('aria-label',open?'Close menu':'Open menu');$('#mobile-menu').hidden=!open;});
-document.addEventListener('keydown',event=>{if(event.key==='Escape'&&menu.getAttribute('aria-expanded')==='true'){menu.click();menu.focus();}if(event.key==='Escape'&&$('#trip-ticket')?.classList.contains('is-open'))setTripTicketOpen(false,true);});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&menu.getAttribute('aria-expanded')==='true'){menu.click();menu.focus();}});
 $$('.cart-trigger').forEach(b=>b.addEventListener('click',async()=>{await catalogReady;renderCart();dialog.showModal();}));
 $('.close-cart').addEventListener('click',()=>dialog.close());
 dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right)dialog.close();}});
@@ -120,63 +119,43 @@ if($('#product-grid')){
  filters.forEach(b=>b.addEventListener('click',()=>{active=b.dataset.filter;filter();}));input.addEventListener('input',filter);sort.addEventListener('change',filter);$('#shop-search').addEventListener('submit',e=>{e.preventDefault();filter();});$('#reset-filters').addEventListener('click',()=>{active='All';input.value='';sort.value='featured';filter();input.focus();});filter();
  if(params.has('search'))input.focus();
 }
-function tripCountLabel(count){return `${count} item${count===1?'':'s'}`;}
-function updateTripPresentation(){
- const count=supplyTrip.filter(line=>line.item.trim()).length;
- ['#trip-count','#trip-count-mobile','#request-trip-count'].forEach(selector=>{const node=$(selector);if(node)node.textContent=tripCountLabel(count);});
- const empty=$('#trip-empty');if(empty)empty.hidden=count>0;
- const summary=$('#request-manifest-summary');if(summary)summary.innerHTML=count?supplyTrip.filter(line=>line.item.trim()).map((line,index)=>`<div class="request-trip-line"><span>${String(index+1).padStart(2,'0')}</span><strong>${esc(line.item)}</strong><small>${esc(line.qty||'Qty / size not specified')}</small></div>`).join(''):'<p class="trip-summary-empty">No supplies added yet. Add items from the catalog above, or describe your request below.</p>';
- const clear=$('#clear-trip-list');if(clear)clear.disabled=count===0;
-}
-function saveTrip(){try{localStorage.setItem('nbss-supply-trip',JSON.stringify(supplyTrip));}catch{toast('Your list is available for this visit. Browser storage is unavailable.');}updateTripPresentation();}
-function renderTrip(){
- const lines=$('#trip-lines');if(!lines)return;
- lines.innerHTML=supplyTrip.map(line=>`<div class="trip-line"><label><span>SUPPLY ITEM</span><input type="text" data-trip-field="item" data-trip-id="${esc(line.id)}" value="${esc(line.item)}" placeholder="Item or department" aria-label="Supply item"></label><label><span>QTY / SIZE</span><input type="text" data-trip-field="qty" data-trip-id="${esc(line.id)}" value="${esc(line.qty)}" placeholder="As needed" aria-label="Quantity or size for ${esc(line.item||'supply item')}"></label><button type="button" data-trip-remove="${esc(line.id)}" aria-label="Remove ${esc(line.item||'supply item')}">×</button></div>`).join('');
- updateTripPresentation();
-}
-function addTripLine(item=''){
- const id=`trip-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
- supplyTrip.push({id,item,qty:''});saveTrip();renderTrip();
- if(!item)$('#trip-lines')?.lastElementChild?.querySelector('[data-trip-field="item"]')?.focus();
-}
-function setTripTicketOpen(open,restoreFocus=false){
- const ticket=$('#trip-ticket'),toggle=$('#trip-ticket-toggle');if(!ticket||!toggle)return;
- ticket.classList.toggle('is-open',open);toggle.setAttribute('aria-expanded',String(open));document.body.classList.toggle('trip-ticket-open',open);
- if(open){dismissToast();$('#trip-ticket-close')?.focus();}else if(restoreFocus)toggle.focus();
-}
-if($('#trip-ticket')){
- renderTrip();
- $('#trip-ticket-toggle').addEventListener('click',()=>setTripTicketOpen(true));
- $('#trip-ticket-close').addEventListener('click',()=>setTripTicketOpen(false,true));
- $('#trip-ticket-backdrop').addEventListener('click',()=>setTripTicketOpen(false,true));
- $('#add-custom-item').addEventListener('click',()=>addTripLine());
- $('#clear-trip-list').addEventListener('click',()=>{supplyTrip=[];saveTrip();renderTrip();toast('Trip list cleared.');});
- $('#trip-lines').addEventListener('input',event=>{
-  const input=event.target.closest('[data-trip-field]');if(!input)return;
-  const line=supplyTrip.find(x=>x.id===input.dataset.tripId);if(!line)return;
-  line[input.dataset.tripField]=input.value.slice(0,input.dataset.tripField==='item'?200:100);
-  saveTrip();
+function orderLineId(){return `line-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;}
+function saveOrderLines(){try{localStorage.setItem('nbss-order-lines',JSON.stringify(orderLines));}catch{}}
+function renderOrderLines(){
+ const host=$('#order-lines');if(!host)return;
+ host.replaceChildren();
+ orderLines.forEach((line,index)=>{
+  const row=document.createElement('div');row.className='order-line';
+  const itemLabel=document.createElement('label');itemLabel.innerHTML=`<span>SUPPLY ITEM</span><input type="text" maxlength="200" list="inventory-suggestions" data-order-field="item" data-order-id="${esc(line.id)}" placeholder="Type a supply or choose a suggestion" aria-label="Supply item ${index+1}">`;
+  itemLabel.querySelector('input').value=line.item;
+  const qtyLabel=document.createElement('label');qtyLabel.innerHTML=`<span>QTY / SIZE / SPEC</span><input type="text" maxlength="100" data-order-field="qty" data-order-id="${esc(line.id)}" placeholder="e.g. 200 ft, 3/4 inch" aria-label="Amount or size for supply line ${index+1}">`;
+  qtyLabel.querySelector('input').value=line.qty;
+  const remove=document.createElement('button');remove.type='button';remove.className='order-line-remove';remove.dataset.removeOrderLine=line.id;remove.setAttribute('aria-label',`Remove supply line ${index+1}`);remove.textContent='×';
+  row.append(itemLabel,qtyLabel,remove);host.append(row);
  });
- $('#trip-lines').addEventListener('click',event=>{
-  const button=event.target.closest('[data-trip-remove]');if(!button)return;
-  supplyTrip=supplyTrip.filter(line=>line.id!==button.dataset.tripRemove);saveTrip();renderTrip();
+ const count=$('#order-line-count');if(count)count.textContent=`${orderLines.length} ${orderLines.length===1?'line':'lines'}`;
+}
+function addOrderLine(focus=true){orderLines.push({id:orderLineId(),item:'',qty:''});saveOrderLines();renderOrderLines();if(focus)$('#order-lines input[data-order-field="item"]:last-of-type')?.focus();}
+if($('#supply-order-form')){
+ if(!orderLines.length)orderLines=[{id:orderLineId(),item:'',qty:''}];
+ renderOrderLines();
+ $('#add-order-line').addEventListener('click',()=>addOrderLine());
+ $('#order-lines').addEventListener('input',event=>{
+  const input=event.target.closest('[data-order-field]');if(!input)return;
+  const line=orderLines.find(item=>item.id===input.dataset.orderId);if(!line)return;
+  line[input.dataset.orderField]=input.value.slice(0,input.dataset.orderField==='item'?200:100);saveOrderLines();
  });
- $$('[data-add-supply]').forEach(button=>button.addEventListener('click',()=>{
-  addTripLine(button.dataset.addSupply);toast(`${button.dataset.addSupply} added to your trip list.`);
- }));
- $('#review-trip-list').addEventListener('click',()=>{
-  setTripTicketOpen(false);document.body.classList.add('trip-review-mode');$('#supply-request').scrollIntoView({behavior:'smooth',block:'start'});
-  window.setTimeout(()=>$('#supply-request input[name="name"]')?.focus({preventScroll:true}),450);
+ $('#order-lines').addEventListener('click',event=>{
+  const button=event.target.closest('[data-remove-order-line]');if(!button)return;
+  orderLines=orderLines.filter(line=>line.id!==button.dataset.removeOrderLine);
+  if(!orderLines.length)orderLines=[{id:orderLineId(),item:'',qty:''}];
+  saveOrderLines();renderOrderLines();
  });
- $('#edit-trip-list').addEventListener('click',()=>{document.body.classList.remove('trip-review-mode');$('#supply-catalog').scrollIntoView({behavior:'smooth',block:'start'});});
- const requestSection=$('#supply-request');
- if(requestSection&&'IntersectionObserver'in window)new IntersectionObserver(entries=>document.body.classList.toggle('trip-review-visible',entries[0].isIntersecting),{threshold:.12}).observe(requestSection);
- const search=$('#supply-search'),cards=$$('.supply-card');
- search.addEventListener('input',()=>{
-  const query=search.value.trim().toLowerCase();let visible=0;
-  cards.forEach(card=>{const match=card.dataset.supplySearch.includes(query);card.hidden=!match;if(match)visible++;});
-  $('#supply-no-results').hidden=visible>0;
- });
+ fetch('/api/inventory',{cache:'no-store'}).then(async response=>{const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error();
+  const datalist=$('#inventory-suggestions');datalist.replaceChildren();
+  (Array.isArray(payload.items)?payload.items:[]).forEach(item=>{const option=document.createElement('option');option.value=item.item;option.label=[item.category,item.unit].filter(Boolean).join(' · ');datalist.append(option);});
+  $('#inventory-help').textContent=datalist.options.length?`${datalist.options.length} active inventory suggestions loaded. Write in a custom supply if it is not listed.`:'No inventory suggestions are listed yet. Write in any supply; the desk can maintain suggestions from Admin.';
+ }).catch(()=>{$('#inventory-help').textContent='Inventory suggestions are temporarily unavailable. Write in any supply.';});
 }
 function writeRequestMessage(result,{title,detail,warning=''}={}){
  result.replaceChildren();result.hidden=false;
@@ -184,34 +163,21 @@ function writeRequestMessage(result,{title,detail,warning=''}={}){
  const copy=document.createElement('p');copy.textContent=detail;result.append(copy);
  if(warning){const note=document.createElement('p');note.className='request-warning';note.textContent=warning;result.append(note);}
 }
-$$('[data-inquiry]').forEach(form=>form.addEventListener('submit',async e=>{
- e.preventDefault();const data=new FormData(form),supply=form.dataset.inquiry==='supply';
- if(supply){
-  const lines=supplyTrip.map(line=>({item:line.item.trim(),qty:line.qty.trim()})).filter(line=>line.item);
-  const result=$('.inquiry-result',form),button=$('button[type="submit"]',form),original=button.textContent;
-  if(!lines.length&&!String(data.get('message')||'').trim()){$('textarea[name="message"]',form).focus();toast('Add at least one supply item or a note for the counter.');return;}
-  const submissionKey=form.dataset.submissionKey||(form.dataset.submissionKey=globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`);
-  button.disabled=true;button.textContent='Sending request…';
-  result.hidden=true;
-  try{
-   const response=await fetch('/api/supply-orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-    name:data.get('name'),email:data.get('email'),company:data.get('company'),neededBy:data.get('date'),handoff:data.get('handoff'),
-    message:data.get('message'),website:data.get('website'),items:lines,submissionKey
-   })});
-   const payload=await response.json().catch(()=>({}));
-   if(!response.ok||!payload.accepted)throw new Error(payload.error||'We could not save your request.');
-   form.dataset.submissionKey='';
-   const warning=!payload.staffAlertSent||!payload.customerConfirmationSent?'Your request is on file, but an automatic email could not be sent to the counter or to you. Save this reference number and call 508-994-2961 if the request is time-sensitive.':'';
-   writeRequestMessage(result,{title:`Request received · ${payload.orderNumber}`,detail:'The supply desk has your list. This is a request, not a confirmed order; NBSS will confirm availability, pricing and handoff with you.',warning});
-   if(!payload.duplicate){supplyTrip=[];saveTrip();renderTrip();}
-  }catch(error){writeRequestMessage(result,{title:'Request not submitted',detail:error.message||'Please try again.',warning:'If the issue continues or your request is time-sensitive, call the supply desk at 508-994-2961.'});}
-  finally{button.disabled=false;button.textContent=original;}
-  return;
- }
- const subject=`NBSS — ${data.get('topic')||'General question'}`;
- const body=`Name: ${data.get('name')}\nEmail: ${data.get('email')}\nPhone: ${data.get('company')||'Not provided'}\nMessage:\n${data.get('message')||'None provided'}`;
- const url=`mailto:help@nbshipsupply.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
- const result=$('.inquiry-result',form);result.hidden=false;result.innerHTML=`<p>Your draft is ready. Send it from your email app to complete your inquiry.</p><a class="text-link" href="${esc(url)}">Open email draft →</a><details style="margin-top:12px"><summary>Email app didn’t open?</summary><p>Copy the draft below and email it to help@nbshipsupply.com.</p><textarea aria-label="Email draft" readonly rows="6">${esc(subject+'\n\n'+body)}</textarea></details>`;
- window.location.href=url;
+$$('[data-inquiry="supply"]').forEach(form=>form.addEventListener('submit',async event=>{
+ event.preventDefault();const data=new FormData(form),result=$('.inquiry-result',form),button=$('button[type="submit"]',form),original=button.textContent;
+ const items=orderLines.map(line=>({item:line.item.trim(),qty:line.qty.trim()})).filter(line=>line.item);
+ if(!items.length){$('#order-lines input[data-order-field="item"]')?.focus();toast('Write in at least one supply item.');return;}
+ const submissionKey=form.dataset.submissionKey||(form.dataset.submissionKey=globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`);
+ button.disabled=true;button.textContent='Recording order…';result.hidden=true;
+ try{
+  const response=await fetch('/api/supply-orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+   name:data.get('name'),phone:data.get('phone'),company:data.get('company'),neededBy:data.get('neededBy'),handoff:data.get('handoff'),
+   message:data.get('message'),website:data.get('website'),items,submissionKey
+  })});
+  const payload=await response.json().catch(()=>({}));if(!response.ok||!payload.orderNumber)throw new Error(payload.error||'We could not record the order.');
+  writeRequestMessage(result,{title:`ORDER NUMBER · ${payload.orderNumber}`,detail:'NBSS must confirm availability and pricing.'});
+  form.dataset.submissionKey='';form.reset();orderLines=[{id:orderLineId(),item:'',qty:''}];saveOrderLines();renderOrderLines();
+ }catch(error){writeRequestMessage(result,{title:'ORDER NOT RECORDED',detail:error.message||'Please try again.',warning:'If the issue continues or your order is time-sensitive, call 508-994-2961.'});}
+ finally{button.disabled=false;button.textContent=original;}
 }));
 window.addEventListener('storage',event=>{if(event.key==='nbss-bag'){try{cart=safeCart(JSON.parse(event.newValue||'[]'));updateCounts();if(dialog.open)renderCart();}catch{}}});

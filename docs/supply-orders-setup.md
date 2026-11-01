@@ -1,95 +1,98 @@
-# NBSS supply request setup
+# NBSS order desk setup
 
-This configures the commercial supply request form and private `/admin` order desk. The production site uses Google Sheets as its request store. Google credentials stay in Vercel server-side environment variables; the public browser never receives them.
+This connects the Chandlery write-in order form and private `/admin` staff page to one private Google spreadsheet. The workbook has two tabs: `Orders` and `Inventory`. Google Sheets API access runs from Vercel server functions. There is no customer email workflow, payment processing, stock reservation, automatic stock deduction or Apps Script in this setup.
 
-The supply form is a request for a quote. It does not confirm stock, price, delivery or payment. The counter continues to confirm those details with each customer.
+## 1. Create the Google spreadsheet
 
-## 1. Create the private order spreadsheet
-
-1. Sign in to a Google account controlled by NBSS, preferably a company Google Workspace account rather than an individual employee's account.
-2. Create a spreadsheet named **NBSS Supply Requests**.
-3. Rename the first tab to **Orders** (capital O, no spaces).
-4. Paste this tab-separated header row into cell `A1`. Keep the column order and names exactly as shown; the backend checks them before it accepts requests.
+1. Sign in to a Google account controlled by NBSS. A company Workspace account is preferable to an employee's personal account.
+2. Create a Google spreadsheet named **NBSS Supply Desk**. Keep it private; do not turn on **Anyone with the link**.
+3. Rename the first sheet tab to exactly `Orders`.
+4. Paste this tab-separated header into cell `A1` of `Orders`:
 
 ```text
-Created at	Request number	Status	Customer name	Email	Vessel / company	Needed by	Preferred handoff	Supply list	Supply items JSON	Customer notes	Staff notes	Updated at	Staff alert status	Customer confirmation status	Submission key
+Created at	Order number	Status	Customer name	Phone	Vessel / company	Needed by	Preferred handoff	Supply list	Supply items JSON	Customer notes	Staff notes	Updated at	Submission key
 ```
 
-5. Leave the sheet private. Do not enable “Anyone with the link.” NBSS staff who should use the Google Sheet directly may be added as editors; the admin page itself will use its own approved-account sign-in.
-6. Copy the spreadsheet ID from its address. It is the part after `/spreadsheets/d/` and before `/edit`.
+5. Add a second sheet tab with the **+** button and name it exactly `Inventory`.
+6. Paste this tab-separated header into cell `A1` of `Inventory`:
 
-The admin page is the normal way to review, search and update requests. In the sheet, staff notes and status are current values; closed requests remain in the sheet for reference rather than being deleted.
+```text
+Supply item	Category	Unit	On hand	Reorder at	Location	Notes	Active
+```
 
-## 2. Set up Google Sheets API access
+7. Keep the headers in this exact order. The application checks both header rows before reading or writing. Do not insert, remove, rename or rearrange columns.
+8. Optional: add starter inventory names beneath the header. For example, use `Scallop gear` for rings, links, chain, twine / tar; `Rope & wire` for rope / line, steel wire rope, rigging hardware, cut lengths; `Deck & safety` for foul-weather gear, deck boots, gloves, safety equipment; `Tools & repair` for hand tools, boat parts, construction supplies, cleaning supplies; and `Trip provisions` for frozen provisions, dry goods, drinks, crew essentials. These are suggestion names only; check the actual range of NBSS stock and set real quantities in the admin page. Leave `On hand` and `Reorder at` at `0` until staff verify them. No price column is needed because staff confirm pricing per order.
+9. In the `Active` column, use `TRUE` for supplies to suggest on the customer form and `FALSE` for archived items. In the admin page, use the **Active supply** checkbox. Archiving keeps historical/reference data and removes the name from customer suggestions.
+10. Format `On hand` and `Reorder at` as numbers. You may freeze row 1 and turn on filters for staff who edit the sheet directly. These formatting steps are optional; do not change the header values.
+11. Copy the spreadsheet ID from its URL. It is the text after `/spreadsheets/d/` and before `/edit`.
 
-1. Open Google Cloud Console and create a project named **NBSS Supply Requests**.
-2. In **APIs & Services → Library**, find **Google Sheets API** and enable it for this project.
-3. In **IAM & Admin → Service Accounts**, create a service account named `nbss-order-intake`.
-4. Create a JSON key for that service account and download it temporarily. The site needs the JSON's `client_email` and `private_key` values.
-5. Return to the private spreadsheet, choose **Share**, and grant the service account email from `client_email` **Editor** access. You do not need to make the spreadsheet public or grant the service account broad project access.
-6. Keep the JSON key private. Do not commit it, paste it into this repository, or send it in chat. After placing the values in Vercel, store/delete the downloaded key according to NBSS's credential policy.
+The admin page is the intended way to update inventory and process orders. Every one of the eight `Inventory` columns has an editable control in the inventory editor. In the `Orders` tab, staff-editable order fields are status, customer name, phone, vessel / company, needed-by date, handoff, supply lines, customer notes and staff notes. The order number, submission key and timestamps are system-managed.
 
-If a Google Workspace policy blocks sharing with a service account, ask the Workspace administrator to allow the NBSS-owned service account to access this one spreadsheet.
+## 2. Give the website private spreadsheet access
 
-## 3. Create staff-only Google sign-in
+1. Open [Google Cloud Console](https://console.cloud.google.com/) and create a project named **NBSS Supply Desk** (or choose a company-owned project for this integration).
+2. In **APIs & Services → Library**, search for **Google Sheets API**, open it and select **Enable**.
+3. Go to **IAM & Admin → Service Accounts → Create service account**. Name it `nbss-order-desk`. Continue through the wizard; it does not need broad project roles.
+4. Open the new service account, choose **Keys → Add key → Create new key → JSON**, and download the JSON file temporarily. It contains `client_email` and `private_key`.
+5. Return to the private Google spreadsheet. Select **Share** and add the service account `client_email` as an **Editor**. This grants access to this workbook, which contains both tabs. Do not make the workbook public.
+6. Keep the JSON file secret. Do not commit it, attach it to an issue, paste it in this chat or put it in frontend code. After the values are saved in Vercel, store or delete the downloaded file according to NBSS credential policy.
 
-1. In the same Cloud project, open **Google Auth Platform** (or **APIs & Services → OAuth consent screen**, depending on the console layout) and configure the app name as **NBSS Supply Desk**.
-2. Choose **Internal** if every approved staff account belongs to the NBSS Workspace. Otherwise choose **External**, add each allowed NBSS staff email under **Test users** while testing, and publish the consent screen before relying on it for ongoing staff use.
-3. Request only the basic `openid` and `email` identity scopes. The order desk uses the signed-in address to enforce the staff allowlist; it does not read Gmail or Drive.
-4. Under **Credentials**, create an **OAuth client ID** with application type **Web application**.
-5. Add this exact **Authorized redirect URI** (replace the origin with the live production site origin, with no trailing slash):
+**Google Apps Script is not required.** The Vercel API functions use the Google Sheets API directly, so there is no Apps Script project, deployment URL, web-app access setting or script secret to configure.
+
+## 3. Configure staff sign-in in Google Cloud
+
+1. In the same Cloud project, open **Google Auth Platform**. If prompted, configure the consent screen with app name **NBSS Supply Desk** and NBSS support contact information.
+2. Choose **Internal** if all authorized NBSS staff use the same Workspace. Otherwise choose **External**. During testing, add the staff accounts under **Test users**; publish the consent screen before relying on external sign-in for regular staff use.
+3. The app requests only the basic `openid` and `email` identity scopes. This is for staff identity and the `/admin` allowlist; the app does not access Gmail.
+4. Open **Clients** (or **APIs & Services → Credentials**) and create an OAuth client. Choose application type **Web application**.
+5. In **Authorized redirect URIs**, add:
 
 ```text
 https://nbss-nine.vercel.app/api/admin-auth-callback
 ```
 
-The earlier site screenshot shows `https://nbss-nine.vercel.app`; use this exact callback if that hostname is still the Production domain listed in Vercel → **Settings → Domains**. If the primary Production domain has changed, replace only the hostname in this callback with that current domain. Do not use a build-specific deployment URL or change DNS / Shopify domains for this setup. If NBSS later changes its production domain, update both `APP_BASE_URL` in Vercel and the authorized redirect URI in Google Cloud.
-6. Copy the OAuth client ID and client secret into Vercel in the next step. Do not put either secret in frontend JavaScript.
+First confirm that `nbss-nine.vercel.app` is still the Production domain in Vercel → **Settings → Domains**. If the Production domain is different, use `https://<current-production-domain>/api/admin-auth-callback` instead. The value must match the site's production origin exactly; do not use a preview deployment URL. If the domain changes later, update both this URI and `APP_BASE_URL` in Vercel.
+6. Save the OAuth client ID and client secret for Vercel. Never place the client secret in browser code or the repository.
 
-## 4. Configure Vercel environment variables
+## 4. Add the Production environment variables in Vercel
 
-1. Open the Vercel project connected to `caliphsafe/nbss` (project name `nbss`) → **Settings → Environment Variables**.
-2. Add the following values for **Production**. Do not use the live spreadsheet credentials in Preview unless you create a separate test spreadsheet and separate OAuth callback.
+1. Sign in to Vercel and open the project connected to **`caliphsafe/nbss`** (project name `nbss`).
+2. Go to **Settings → Environment Variables**.
+3. Add each variable below and select **Production** as its environment. Store secrets only in Vercel, not in GitHub.
 
-| Variable | Value |
+| Name | Value |
 | --- | --- |
-| `APP_BASE_URL` | `https://nbss-nine.vercel.app` if it remains the primary Production domain, with no trailing slash or path |
-| `GOOGLE_SHEETS_SPREADSHEET_ID` | The spreadsheet ID copied in step 1 |
-| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | The service account's `client_email` |
-| `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` | The complete `private_key`, including the `BEGIN PRIVATE KEY` and `END PRIVATE KEY` lines |
-| `ADMIN_GOOGLE_CLIENT_ID` | Google OAuth web client ID |
-| `ADMIN_GOOGLE_CLIENT_SECRET` | Google OAuth web client secret |
-| `ADMIN_EMAILS` | Comma-separated lowercase email addresses allowed into `/admin` |
-| `ADMIN_SESSION_SECRET` | A new random secret with at least 32 characters; generate one with a password manager or `openssl rand -base64 48` |
+| `APP_BASE_URL` | Production origin only, such as `https://nbss-nine.vercel.app` (no path or trailing slash) |
+| `GOOGLE_SHEETS_SPREADSHEET_ID` | ID copied from the `NBSS Supply Desk` spreadsheet URL |
+| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | `client_email` from the service account JSON |
+| `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` | Complete `private_key`, including the BEGIN and END lines |
+| `ADMIN_GOOGLE_CLIENT_ID` | OAuth web client ID from Google Cloud |
+| `ADMIN_GOOGLE_CLIENT_SECRET` | OAuth web client secret from Google Cloud |
+| `ADMIN_EMAILS` | Comma-separated Google identities allowed into `/admin`, for example `captain@nbshipsupply.com,manager@nbshipsupply.com` |
+| `ADMIN_SESSION_SECRET` | New random value at least 32 characters long; generate with a password manager or `openssl rand -base64 48` |
 
-Mark credentials as **Sensitive** in Vercel when that option is available. For `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`, paste the full multiline key value without surrounding JSON quotes. The server also accepts literal `\n` line breaks if Vercel's field requires a single line.
+For `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`, paste the whole multiline value without surrounding JSON quotes. If Vercel requires a single line, literal `\n` line breaks are accepted by the server. Mark secret values as **Sensitive** if Vercel offers that choice.
 
-## 5. Configure staff and customer email notifications
+4. Do not add `RESEND_API_KEY`, sender addresses or customer email variables; the order flow does not send email.
+5. Do not connect a Preview deployment to the Production workbook. If staff need to test preview URLs, create a separate test workbook and use its ID in Preview-only environment variables. For routine verification, use the Production deployment and a clearly labeled test order.
 
-Email delivery is separate from saving requests. Requests still appear in `/admin` if email isn't configured, but staff won't receive a new-request alert and customers won't receive an email receipt.
+## 5. Deploy and verify the connection
 
-1. Create or use an NBSS-owned Resend account.
-2. Verify a sending domain that NBSS controls and follow Resend's DNS verification steps. Use an address on that verified domain for the sender.
-3. Create a Resend API key for this project.
-4. Add these **Production** variables in Vercel:
+1. Save the variables in Vercel. Environment-variable changes are used by new deployments, so redeploy the latest successful `main` deployment after adding or changing values.
+2. Open the Production site at `/admin` and select **Sign in with Google**. Use an identity listed in `ADMIN_EMAILS`.
+3. Confirm the **Orders** view loads. Select **Inventory** and verify the sheet connection loads an empty inventory table or the starter names you entered.
+4. Add a clearly labeled test supply item in Admin. Confirm it appears as an inventory row in the Google `Inventory` tab and as a suggestion on `/marine-supply`.
+5. Submit one clearly labeled test order with a controlled name and phone number. Confirm the customer sees the **order number** and the availability/pricing note; confirm that the same order appears in the `Orders` tab and the Admin queue.
+6. In Admin, edit the test order's status, a supply line and staff notes; save and confirm the sheet updates. Edit the test inventory name, unit or quantity and confirm all changes save.
+7. Mark the test order **Cancelled** when finished. The order remains in the sheet as a record. Order submission does not deduct or reserve stock; staff should adjust inventory when the business's chosen fulfillment step is complete.
+8. Try the sign-in flow using an account not listed in `ADMIN_EMAILS`; it must not enter the desk.
 
-| Variable | Value |
-| --- | --- |
-| `RESEND_API_KEY` | The Resend API key |
-| `ORDER_NOTIFICATION_EMAIL` | The staff inbox that should receive every new supply request, for example `orders@nbshipsupply.com` |
-| `ORDER_FROM_EMAIL` | A verified sender, for example `New Bedford Ship Supply <orders@nbshipsupply.com>` |
+## Troubleshooting
 
-## 6. Deploy and verify the setup
+- **The form says inventory suggestions are unavailable:** order entry still accepts write-in supplies. Check the `Inventory` tab name and exact eight headers, the spreadsheet ID, the service-account share, and Vercel variables.
+- **The admin page says it cannot reach the sheet:** confirm the `Orders` and `Inventory` tabs and exact header rows; confirm the Sheets API is enabled and the service account still has Editor access; then redeploy if a Vercel variable changed.
+- **Google sign-in returns a redirect error:** make sure the authorized redirect URI and `APP_BASE_URL` use the same Production hostname, and that the URI ends in `/api/admin-auth-callback`.
+- **A staff member is denied:** add their Google identity to `ADMIN_EMAILS`, check for whitespace or spelling mistakes, and redeploy after changing the Vercel variable.
+- **The order confirmation is not shown:** the number only appears after the row is written successfully. Check the order sheet and Vercel function logs before asking the customer to resubmit; the submission key prevents a repeated click from creating a second row in normal retry cases.
 
-1. Save the Vercel environment variables. Environment changes apply to a new deployment, so redeploy the latest successful `main` commit from **Deployments** after completing the settings.
-2. Open `/admin` on the production site and sign in with an address listed in `ADMIN_EMAILS`.
-3. Confirm the dashboard loads and the email configuration warning is gone.
-4. Submit one clearly labeled test request from `/marine-supply`, using an NBSS-controlled test email address. Confirm it appears in the private `Orders` sheet and admin list, that the staff alert and customer receipt arrive, and that the order status and private staff notes save.
-5. Try a Google account not listed in `ADMIN_EMAILS`; it should not open the order desk.
-6. Mark the test request **Closed** so it is clearly out of the active queue. The system intentionally has no delete action, preserving a simple request record.
-
-If the form cannot save a request, verify that the `Orders` tab name and header row are exact, the service-account email has Editor access to that sheet, the spreadsheet ID is correct, and all Vercel values are set for the production environment. Redeploy after changing any Vercel variables.
-
-## Vercel variables checklist
-
-The complete server-side variable set is also listed in [`.env.example`](../.env.example). Never use a `VITE_` prefix for these secrets; that prefix could expose values to browser code.
+All server-side variables are listed in [`.env.example`](../.env.example). Never add a `VITE_` prefix to these secrets because that can expose values to browser code.

@@ -1,4 +1,5 @@
 import {createSign} from 'node:crypto';
+import {INVENTORY_HEADERS} from '../../lib/inventory.mjs';
 import {ORDER_HEADERS} from '../../lib/supply-orders.mjs';
 
 const TOKEN_URL='https://oauth2.googleapis.com/token';
@@ -49,27 +50,43 @@ async function sheetsFetch(path,{method='GET',body}={}){
   return data;
 }
 
-export async function getOrderRows(){
-  const data=await sheetsFetch(`values/${encodeURIComponent('Orders!A:P')}`);
+function rowsFrom(data,headers,tab){
   const rows=Array.isArray(data.values)?data.values:[];
-  if(!rows.length||ORDER_HEADERS.some((header,index)=>rows[0]?.[index]!==header)) throw new Error('The Orders tab needs the setup header row.');
+  if(!rows.length||headers.some((header,index)=>rows[0]?.[index]!==header)) throw new Error(`The ${tab} tab needs the setup header row.`);
   return rows;
 }
 
+export async function getOrderRows(){
+  return rowsFrom(await sheetsFetch(`values/${encodeURIComponent('Orders!A:N')}`),ORDER_HEADERS,'Orders');
+}
+
 export async function appendOrder(row){
-  return sheetsFetch(`values/${encodeURIComponent('Orders!A:P')}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,{
+  return sheetsFetch(`values/${encodeURIComponent('Orders!A:N')}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,{
     method:'POST',body:{majorDimension:'ROWS',values:[row]}
   });
 }
 
-export async function updateOrderCells(sheetRow,{status,staffNotes,staffAlertStatus,customerConfirmationStatus,updatedAt}){
-  const data=[];
-  if(status!==undefined) data.push({range:`Orders!C${sheetRow}`,values:[[status]]});
-  if(staffNotes!==undefined) data.push({range:`Orders!L${sheetRow}`,values:[[staffNotes]]});
-  if(updatedAt!==undefined) data.push({range:`Orders!M${sheetRow}`,values:[[updatedAt]]});
-  if(staffAlertStatus!==undefined) data.push({range:`Orders!N${sheetRow}`,values:[[staffAlertStatus]]});
-  if(customerConfirmationStatus!==undefined) data.push({range:`Orders!O${sheetRow}`,values:[[customerConfirmationStatus]]});
-  if(!data.length) return;
-  return sheetsFetch('values:batchUpdate?valueInputOption=RAW',{method:'POST',body:{valueInputOption:'RAW',data}});
+export async function updateOrderRow(sheetRow,order,updatedAt){
+  const values=[order.status,order.name,order.phone,order.company,order.neededBy,order.handoff,
+    order.items.map(({item,qty})=>`• ${item}${qty?` — ${qty}`:''}`).join('\n'),JSON.stringify(order.items),order.message,order.staffNotes];
+  return sheetsFetch('values:batchUpdate?valueInputOption=RAW',{method:'POST',body:{valueInputOption:'RAW',data:[
+    {range:`Orders!C${sheetRow}:L${sheetRow}`,values:[values]},
+    {range:`Orders!M${sheetRow}`,values:[[updatedAt]]}
+  ]}});
 }
 
+export async function getInventoryRows(){
+  return rowsFrom(await sheetsFetch(`values/${encodeURIComponent('Inventory!A:H')}`),INVENTORY_HEADERS,'Inventory');
+}
+
+export async function appendInventory(row){
+  return sheetsFetch(`values/${encodeURIComponent('Inventory!A:H')}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,{
+    method:'POST',body:{majorDimension:'ROWS',values:[row]}
+  });
+}
+
+export async function updateInventoryRow(sheetRow,row){
+  return sheetsFetch('values:batchUpdate?valueInputOption=RAW',{method:'POST',body:{valueInputOption:'RAW',data:[
+    {range:`Inventory!A${sheetRow}:H${sheetRow}`,values:[row]}
+  ]}});
+}

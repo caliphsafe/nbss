@@ -4,6 +4,7 @@ import path from 'node:path';
 import './build.mjs';
 import handler from '../api/catalog.js';
 import supplyOrdersHandler from '../api/supply-orders.js';
+import inventoryHandler from '../api/inventory.js';
 import adminLoginHandler from '../api/admin-login.js';
 import adminCallbackHandler from '../api/admin-auth-callback.js';
 import adminSessionHandler from '../api/admin-session.js';
@@ -20,7 +21,7 @@ http.createServer(async(req,res)=>{
    res.status=n=>(res.statusCode=n,res);res.json=x=>res.end(JSON.stringify(x));res.setHeader('Content-Type','application/json');return handler(req,res);
  }
  const apiRoutes=new Map([
-  ['/api/supply-orders',supplyOrdersHandler],['/api/admin-login',adminLoginHandler],
+  ['/api/supply-orders',supplyOrdersHandler],['/api/inventory',inventoryHandler],['/api/admin-login',adminLoginHandler],
   ['/api/admin-auth-callback',adminCallbackHandler],['/api/admin-session',adminSessionHandler],['/api/admin-logout',adminLogoutHandler]
  ]);
  if(apiRoutes.has(url.pathname)){
