@@ -65,3 +65,12 @@ The snapshot was imported on October 22, 2026. Product detail and bag prices/ava
 - `npm run build` passes and generates 24 pages.
 - `npm test` passes 15 checks covering catalog and variant validity, order and inventory validation, invoice and disbursement calculations, spreadsheet row mapping, staff access, cross-origin mutation protection and generated internal links/assets.
 - The existing Shopify apparel checkout remains separate from commercial supply orders.
+
+## Brand partnership proposal
+
+`/proposal` is a standalone executive web pitch deck for the apparel and ecommerce partnership. It is not linked in the customer storefront and carries noindex directives; this does not restrict direct access. The store and admin workflows are unchanged.
+
+- `public/proposal.html`, `public/proposal.css`, `public/proposal.js`: responsive 12-section deck, presentation navigation and print styles.
+- `public/proposal-model.js`: illustrative 12-month scenarios and explicit unit economics. No private analytics or actual sales projections are claimed.
+- Pricing: $3,000 build; one $2,500 monthly service fee; 3 original designs and 75 standard orders included. Third-party budgets and production are separate.
+- Black transparent NBSS wordmark downloaded from the official website (`Artboard_3.png`); the supplied JPEG was flattened to solid black. Existing NBSS photography is reused.

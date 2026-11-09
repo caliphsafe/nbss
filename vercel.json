@@ -6,6 +6,7 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "headers": [
+    { "source": "/proposal", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" }] },
     { "source": "/admin", "headers": [
       { "key": "X-Robots-Tag", "value": "noindex, nofollow, noarchive" },
       { "key": "Cache-Control", "value": "no-store, private" }
