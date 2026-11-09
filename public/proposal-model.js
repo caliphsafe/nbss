@@ -5,7 +5,7 @@ export const scenarios = {
 };
 export function calculate(scenario='base',aov=75,margin=55,ads=750){
  if(!scenarios[scenario]||![aov,margin,ads].every(Number.isFinite)||aov<=0||margin<0||margin>100||ads<0)throw new RangeError('Invalid planning assumptions');
- const fixed=2500+300+150+ads;
+ const fixed=2000+300+150+ads;
  const months=scenarios[scenario].orders.map((orders,index)=>{
  const sales=orders*aov,garments=sales*(1-margin/100),payments=sales*.035,shipping=sales*.08,packaging=sales*.02,returns=sales*.03,overage=Math.max(0,orders-75)*4;
  const cost=garments+payments+shipping+packaging+returns+fixed+overage;
