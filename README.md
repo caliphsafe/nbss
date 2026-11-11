@@ -71,6 +71,6 @@ The snapshot was imported on October 22, 2026. Product detail and bag prices/ava
 `/proposal` is a standalone executive web pitch deck for the apparel and ecommerce partnership. It is not linked in the customer storefront and carries noindex directives; this does not restrict direct access. The store and admin workflows are unchanged.
 
 - `public/proposal.html`, `public/proposal.css`, `public/proposal.js`: responsive 12-section deck, presentation navigation and print styles.
-- `public/proposal-model.js`: illustrative 12-month scenarios and explicit unit economics. No private analytics or actual sales projections are claimed.
-- Pricing: $3,000 build; one $2,000 monthly service fee with a six-month initial term and contract reevaluation; 3 original designs and 75 standard orders included. Third-party budgets and production are separate.
+- `public/proposal-model.js`: the separate MA2K fee structure and paid-ads management calculation. The proposal sets no revenue target before the foundation audit establishes the baseline.
+- Pricing: $3,000 build; one $2,000 monthly MA2K service fee with a six-month initial term and contract reevaluation; 3 original designs and 75 standard orders included. Paid ad spend is separate and carries the supplied 15% management fee. Shoot costs and production are separate.
 - Black transparent NBSS wordmark downloaded from the official website (`Artboard_3.png`); the supplied JPEG was flattened to solid black. Existing NBSS photography is reused.
