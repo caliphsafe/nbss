@@ -72,5 +72,5 @@ The snapshot was imported on October 22, 2026. Product detail and bag prices/ava
 
 - `public/proposal.html`, `public/proposal.css`, `public/proposal.js`: responsive 12-section deck, presentation navigation and print styles.
 - `public/proposal-model.js`: the separate MA2K fee structure and paid-ads management calculation. The proposal sets no revenue target before the foundation audit establishes the baseline.
-- Pricing: $3,000 build; one $2,000 monthly MA2K service fee with a six-month initial term and contract reevaluation; 3 original designs and 75 standard orders included. Paid ad spend is separate and carries the supplied 15% management fee. Shoot costs and production are separate.
+- Pricing: $3,000 build; one $2,500 monthly MA2K Impression service fee with a six-month initial term and contract reevaluation; 4 original designs and 75 standard orders included. The starting marketing plan uses $1,000 monthly ad spend, a 15% management fee, a $500 monthly content allowance and a separate $1,250 initial shoot allowance. Production remains separate.
 - Black transparent NBSS wordmark downloaded from the official website (`Artboard_3.png`); the supplied JPEG was flattened to solid black. Existing NBSS photography is reused.
