@@ -40,3 +40,11 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}body{overflow-x:hidden}
 }
 
 @media(max-width:390px){.deck-header{padding-left:3.5%;padding-right:3.5%}.wordmark{width:108px}.owner-overview{padding-left:4.5%;padding-right:4.5%}.summary-credentials{padding-left:16px;padding-right:16px}.featured-credential{padding:17px}.featured-credential strong{font-size:40px}.summary-scope-heading h2,.summary-budget h2,.summary-credentials h2,.summary-invite h2{font-size:35px}.credential-logo-panel{padding:16px 10px}.slide{padding-left:4.5%;padding-right:4.5%}}
+
+/* Separate source marks retain their own proportions at every viewport. */
+.client-logo-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border-top:1px solid rgba(241,238,231,.15);border-left:1px solid rgba(241,238,231,.15)}
+.client-logo-cell{display:flex;align-items:center;justify-content:center;min-width:0;min-height:138px;padding:24px 18px;border-right:1px solid rgba(241,238,231,.15);border-bottom:1px solid rgba(241,238,231,.15)}
+.client-mark{display:block;width:100%;max-width:152px;height:70px;background:#f1eee7;-webkit-mask:var(--client-logo) center/contain no-repeat;mask:var(--client-logo) center/contain no-repeat}
+.client-mark--wide{max-width:168px;height:64px}.client-mark--tall{max-width:82px;height:90px}.client-mark--fox{max-width:130px;height:64px}
+.summary-credentials .bass-pro-logo,.marketing-credentials .bass-pro-logo{max-width:340px;max-height:240px;margin:16px auto;padding:0}
+@media(max-width:760px){.client-logo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.client-logo-cell{min-height:116px;padding:20px 12px}.client-mark{height:60px}.client-mark--tall{height:76px;max-width:70px}.client-mark--fox{max-width:110px}.summary-credentials .bass-pro-logo,.marketing-credentials .bass-pro-logo{width:100%;max-width:280px}.credential-logo-panel{padding:18px 12px}.credential-logo-panel>span{font-size:9px;line-height:1.7;letter-spacing:1.2px}}
