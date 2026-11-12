@@ -20,8 +20,8 @@ test('no ad spend level is required',()=>{
  assert.throws(()=>calculateCore(0),RangeError);
 });
 
-test('starting program budget reconciles monthly, launch and six-month totals',()=>{
- assert.deepEqual(calculateProgram(),{termMonths:6,recurring:4150,launchMonth:8400,total:29150});
+test('starting program budget keeps the six-month marketing allocation separate',()=>{
+ assert.deepEqual(calculateProgram(),{termMonths:6,monthlyManagement:2500,marketing:{adSpend:6000,adManagement:900,content:3000,initialShoot:1250,total:11150},total:29150});
  assert.equal(fees.startingAdSpend,1000);
  assert.equal(fees.content,500);
  assert.equal(fees.initialShoot,1250);

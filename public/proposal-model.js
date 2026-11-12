@@ -13,6 +13,7 @@ export function calculatePaidAds(adSpend){
 
 export function calculateProgram(termMonths=6,adSpend=fees.startingAdSpend){
  const core=calculateCore(termMonths),paidAds=calculatePaidAds(adSpend);
- const recurring=fees.monthly+paidAds.total+fees.content;
- return {termMonths,recurring,launchMonth:fees.website+fees.initialShoot+recurring,total:core.total+fees.initialShoot+termMonths*(paidAds.total+fees.content)};
+ const marketing={adSpend:termMonths*paidAds.adSpend,adManagement:termMonths*paidAds.managementFee,content:termMonths*fees.content,initialShoot:fees.initialShoot};
+ marketing.total=marketing.adSpend+marketing.adManagement+marketing.content+marketing.initialShoot;
+ return {termMonths,monthlyManagement:fees.monthly,marketing,total:core.total+marketing.total};
 }
